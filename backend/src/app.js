@@ -40,7 +40,7 @@ app.use("/api/submit", submissionRateLimiter, submissionRouter);
 app.use("/docusign/webhook", docusignWebhookRouter);
 
 // Serve React frontend (built files)
-const frontendDist = path.join(__dirname, "../../frontend/dist");
+const frontendDist = path.join(process.cwd(), "frontend", "dist");
 app.use(express.static(frontendDist));
 app.get("*", (_req, res) => {
   res.sendFile(path.join(frontendDist, "index.html"));
