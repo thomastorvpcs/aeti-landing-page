@@ -35,6 +35,20 @@ app.use(globalRateLimiter);
 // Health check
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
+// Debug — remove after confirming static serving works
+app.get("/debug-paths", (_req, res) => {
+  const fs = require("fs");
+  const frontendDist = require("path").join(__dirname, "../public");
+  res.json({
+    __dirname,
+    frontendDist,
+    cwd: process.cwd(),
+    publicExists: fs.existsSync(frontendDist),
+    indexExists: fs.existsSync(require("path").join(frontendDist, "index.html")),
+    files: fs.existsSync(frontendDist) ? fs.readdirSync(frontendDist) : [],
+  });
+});
+
 // Routes
 app.use("/api/submit", submissionRateLimiter, submissionRouter);
 app.use("/docusign/webhook", docusignWebhookRouter);
