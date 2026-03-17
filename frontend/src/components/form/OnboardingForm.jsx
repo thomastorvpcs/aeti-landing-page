@@ -111,8 +111,7 @@ export default function OnboardingForm() {
       Object.entries(formData).forEach(([k, v]) => v && body.append(k, v));
       body.append("w9", w9File);
 
-      const apiBase = import.meta.env.VITE_API_URL || "";
-      await axios.post(`${apiBase}/api/submit`, body, {
+      await axios.post("/api/submit", body, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 

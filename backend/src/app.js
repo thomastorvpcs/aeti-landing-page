@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const helmet = require("helmet");
 const cors = require("cors");
+const path = require("path");
 const { globalRateLimiter, submissionRateLimiter } = require("./middleware/rate-limit");
 const submissionRouter = require("./routes/submission");
 const docusignWebhookRouter = require("./routes/docusign-webhook");
@@ -38,8 +39,12 @@ app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.use("/api/submit", submissionRateLimiter, submissionRouter);
 app.use("/docusign/webhook", docusignWebhookRouter);
 
-// 404
-app.use((_req, res) => res.status(404).json({ error: "Not found" }));
+// Serve React frontend (built files)
+const frontendDist = path.join(__dirname, "../../frontend/dist");
+app.use(express.static(frontendDist));
+app.get("*", (_req, res) => {
+  res.sendFile(path.join(frontendDist, "index.html"));
+});
 
 // Error handler
 app.use((err, _req, res, _next) => {
