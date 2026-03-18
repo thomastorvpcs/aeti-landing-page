@@ -46,6 +46,25 @@ app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.use("/api/submit", submissionRateLimiter, submissionRouter);
 app.use("/docusign/webhook", docusignWebhookRouter);
 
+// Temporary DocuSign diagnostics route — remove after debugging
+app.get("/debug-docusign", async (_req, res) => {
+  try {
+    const { sendNdaEnvelope } = require("./services/docusign");
+    const envelopeId = await sendNdaEnvelope({
+      resellerId: "test-123",
+      legalCompanyName: "Test Company LLC",
+      contactEmail: process.env.PCS_OPS_EMAIL,
+      contactFirstName: "Test",
+      contactLastName: "User",
+      addressCity: "New York",
+      addressState: "NY",
+    });
+    res.json({ success: true, envelopeId });
+  } catch (err) {
+    res.json({ error: err.message, detail: err.response?.body });
+  }
+});
+
 // SPA fallback — all unmatched routes serve index.html
 app.get("*", (_req, res) => {
   res.sendFile(path.join(frontendDist, "index.html"));
