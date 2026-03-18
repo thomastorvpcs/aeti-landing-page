@@ -1,4 +1,4 @@
-require("dotenv").config({ path: require("path").join(__dirname, "../../.env") });
+require("dotenv").config();
 
 const pool = require("../db");
 const { receive, ack } = require("../services/queue");
