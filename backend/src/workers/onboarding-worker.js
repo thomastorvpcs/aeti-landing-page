@@ -3,7 +3,7 @@ require("dotenv").config({ path: require("path").join(__dirname, "../../.env") }
 const pool = require("../db");
 const { receive, ack } = require("../services/queue");
 const { uploadFile, downloadFile } = require("../services/s3");
-const { sendNdaEnvelope, downloadSignedNda } = require("../services/docusign");
+const { sendNdaAgreement, downloadSignedNda } = require("../services/acrobat-sign");
 const { createVendor, updateVendorStatus, attachFileToVendor, createTask } = require("../services/netsuite");
 const { sendWelcomeEmail, sendInternalAlert } = require("../services/sendgrid");
 
@@ -99,9 +99,9 @@ async function handleResellerSubmitted(payload) {
     console.warn("[worker] NETSUITE_ACCOUNT_ID not set — skipping NetSuite steps");
   }
 
-  // 4. Send DocuSign NDA
+  // 4. Send Acrobat Sign NDA
   const envelopeId = await withRetry(
-    () => sendNdaEnvelope({
+    () => sendNdaAgreement({
       resellerId,
       legalCompanyName,
       contactEmail,
@@ -110,7 +110,7 @@ async function handleResellerSubmitted(payload) {
       addressCity: reseller.address_city,
       addressState: reseller.address_state,
     }),
-    "DocuSign sendNdaEnvelope"
+    "AcrobatSign sendNdaAgreement"
   );
 
   // 5. Update DB with integration IDs
