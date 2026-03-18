@@ -9,23 +9,30 @@ const docusignWebhookRouter = require("./routes/docusign-webhook");
 
 const app = express();
 
-// Security headers
+// Serve static assets FIRST — before any middleware that could interfere
+const frontendDist = path.join(__dirname, "../public");
+app.use(express.static(frontendDist));
+
+// Security headers (CSP disabled — Vite assets are self-hosted)
 app.use(helmet({ contentSecurityPolicy: false }));
 
-// CORS — allow Vite dev server and production origin
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || "http://localhost:3000").split(",");
+// CORS — only needed for API routes, not static assets
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || "").split(",").filter(Boolean);
 app.use(
   cors({
     origin: (origin, cb) => {
-      // Allow non-browser requests (e.g., DocuSign webhook, health checks)
-      if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+      // Allow requests with no origin (same-origin, webhooks, health checks)
+      if (!origin) return cb(null, true);
+      // If no allowlist configured, allow all
+      if (allowedOrigins.length === 0) return cb(null, true);
+      if (allowedOrigins.includes(origin)) return cb(null, true);
       cb(new Error("Not allowed by CORS"));
     },
     credentials: true,
   })
 );
 
-// Body parsing (JSON for most routes)
+// Body parsing
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
@@ -35,27 +42,11 @@ app.use(globalRateLimiter);
 // Health check
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
-// Debug — remove after confirming static serving works
-app.get("/debug-paths", (_req, res) => {
-  const fs = require("fs");
-  const frontendDist = require("path").join(__dirname, "../public");
-  res.json({
-    __dirname,
-    frontendDist,
-    cwd: process.cwd(),
-    publicExists: fs.existsSync(frontendDist),
-    indexExists: fs.existsSync(require("path").join(frontendDist, "index.html")),
-    files: fs.existsSync(frontendDist) ? fs.readdirSync(frontendDist) : [],
-  });
-});
-
-// Routes
+// API routes
 app.use("/api/submit", submissionRateLimiter, submissionRouter);
 app.use("/docusign/webhook", docusignWebhookRouter);
 
-// Serve React frontend (copied into backend/public during build)
-const frontendDist = path.join(__dirname, "../public");
-app.use(express.static(frontendDist));
+// SPA fallback — all unmatched routes serve index.html
 app.get("*", (_req, res) => {
   res.sendFile(path.join(frontendDist, "index.html"));
 });
