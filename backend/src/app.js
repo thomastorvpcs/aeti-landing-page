@@ -58,6 +58,18 @@ app.get("/debug-acrobat-templates", async (_req, res) => {
   }
 });
 
+// Temporary: register/re-register Acrobat Sign webhook with correct events
+app.get("/debug-register-webhook", async (_req, res) => {
+  try {
+    const { registerWebhook } = require("./services/acrobat-sign");
+    const webhookUrl = `${process.env.APP_BASE_URL}/acrobat/webhook`;
+    const id = await registerWebhook(webhookUrl);
+    res.json({ registered: true, webhookId: id, url: webhookUrl });
+  } catch (err) {
+    res.json({ error: err.message, detail: err.response?.data });
+  }
+});
+
 // SPA fallback — all unmatched routes serve index.html
 app.get("*", (_req, res) => {
   res.sendFile(path.join(frontendDist, "index.html"));

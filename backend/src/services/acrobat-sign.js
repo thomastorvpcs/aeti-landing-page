@@ -126,7 +126,10 @@ async function registerWebhook(webhookUrl) {
     name: "AETI Onboarding Webhook",
     scope: "ACCOUNT",
     state: "ACTIVE",
-    webhookSubscriptionEvents: ["AGREEMENT_WORKFLOW_COMPLETED"],
+    webhookSubscriptionEvents: [
+      "AGREEMENT_WORKFLOW_COMPLETED",
+      "AGREEMENT_ACTION_COMPLETED",
+    ],
     webhookUrlInfo: { url: webhookUrl },
   };
 
