@@ -242,10 +242,15 @@ async function run() {
 
       await processMessage(msg);
       await ack(msg.receiptHandle);
+      console.log("[worker] Job completed and acknowledged.");
     } catch (err) {
       console.error("[worker] Unhandled error:", err.message);
-      // Message visibility timeout will expire and it will become visible again
-      // (SQS dead-letter queue handles messages that fail repeatedly)
+      // Acknowledge the message to prevent infinite retry loop.
+      // In production, route failed messages to a dead-letter queue instead.
+      if (msg) {
+        console.error("[worker] Acknowledging failed message to prevent retry loop.");
+        await ack(msg.receiptHandle);
+      }
     }
   }
 }
