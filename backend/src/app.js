@@ -10,7 +10,7 @@ const docusignWebhookRouter = require("./routes/docusign-webhook");
 const app = express();
 
 // Security headers
-app.use(helmet());
+app.use(helmet({ contentSecurityPolicy: false }));
 
 // CORS — allow Vite dev server and production origin
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || "http://localhost:3000").split(",");
