@@ -23,7 +23,9 @@ async function getAccessToken() {
   const apiClient = new docusign.ApiClient();
   apiClient.setBasePath(BASE_PATH);
 
-  const privateKey = fs.readFileSync(PRIVATE_KEY_PATH, "utf8");
+  const privateKey = process.env.DOCUSIGN_PRIVATE_KEY
+    ? process.env.DOCUSIGN_PRIVATE_KEY.replace(/\\n/g, "\n")
+    : fs.readFileSync(PRIVATE_KEY_PATH, "utf8");
 
   const results = await apiClient.requestJWTUserToken(
     INTEGRATION_KEY,
