@@ -34,7 +34,7 @@ router.post("/", express.raw({ type: "*/*", limit: "2mb" }), async (req, res) =>
   let payload;
   try {
     const raw = Buffer.isBuffer(req.body) ? req.body.toString("utf8") : JSON.stringify(req.body);
-    console.log("[acrobat-webhook] raw body:", raw.substring(0, 500));
+    console.log("[acrobat-webhook] raw body:", raw);
     payload = JSON.parse(raw);
   } catch (e) {
     console.error("[acrobat-webhook] JSON parse error:", e.message);
