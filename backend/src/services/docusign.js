@@ -103,6 +103,13 @@ async function sendNdaEnvelope({ resellerId, legalCompanyName, contactEmail, con
     ],
   });
 
+  console.log("[docusign] Creating envelope with:", JSON.stringify({
+    accountId: ACCOUNT_ID,
+    templateId: NDA_TEMPLATE_ID,
+    legalEmail: LEGAL_SIGNER_EMAIL,
+    resellerEmail: contactEmail,
+  }));
+
   const result = await envelopesApi.createEnvelope(ACCOUNT_ID, {
     envelopeDefinition,
   });
