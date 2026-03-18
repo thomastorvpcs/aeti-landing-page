@@ -47,6 +47,17 @@ app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.use("/api/submit", submissionRateLimiter, submissionRouter);
 app.use("/acrobat/webhook", acrobatWebhookRouter);
 
+// Temporary: list Acrobat Sign library templates to verify correct IDs
+app.get("/debug-acrobat-templates", async (_req, res) => {
+  try {
+    const { getLibraryTemplates } = require("./services/acrobat-sign");
+    const templates = await getLibraryTemplates();
+    res.json(templates);
+  } catch (err) {
+    res.json({ error: err.message, detail: err.response?.data });
+  }
+});
+
 // SPA fallback — all unmatched routes serve index.html
 app.get("*", (_req, res) => {
   res.sendFile(path.join(frontendDist, "index.html"));

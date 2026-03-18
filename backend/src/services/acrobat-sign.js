@@ -135,4 +135,10 @@ async function registerWebhook(webhookUrl) {
   return response.data.id;
 }
 
-module.exports = { sendNdaAgreement, downloadSignedNda, registerWebhook };
+async function getLibraryTemplates() {
+  const client = await apiClient();
+  const response = await client.get("/libraryDocuments");
+  return response.data;
+}
+
+module.exports = { sendNdaAgreement, downloadSignedNda, registerWebhook, getLibraryTemplates };
