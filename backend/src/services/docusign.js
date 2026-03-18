@@ -77,8 +77,9 @@ async function sendNdaEnvelope({ resellerId, legalCompanyName, contactEmail, con
     tabs: {
       textTabs: [
         { tabLabel: "LegalCompanyName", value: legalCompanyName },
-        { tabLabel: "SignerCity", value: `${addressCity}, ${addressState}` },
-        { tabLabel: "EffectiveDate", value: today },
+        { tabLabel: "CompanyAddress", value: `${addressCity}, ${addressState}` },
+        { tabLabel: "EffectiveDay", value: new Date().getDate().toString() },
+        { tabLabel: "EffectiveMonth", value: new Date().toLocaleString("en-US", { month: "long" }) },
       ],
     },
   });
