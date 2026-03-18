@@ -8,6 +8,7 @@ const submissionRouter = require("./routes/submission");
 const docusignWebhookRouter = require("./routes/docusign-webhook");
 
 const app = express();
+app.set("trust proxy", 1);
 
 // Serve static assets FIRST — before any middleware that could interfere
 const frontendDist = path.join(__dirname, "../public");
