@@ -88,20 +88,26 @@ async function sendInternalAlert({
   const msg = {
     to: OPS_ALERT_EMAIL,
     from: { email: FROM_EMAIL, name: FROM_NAME },
-    templateId: TEMPLATE_INTERNAL_ALERT,
-    dynamicTemplateData: {
+    customArgs: {
+      reseller_ein: ein,
+      reseller_id: resellerId,
+    },
+  };
+
+  if (TEMPLATE_INTERNAL_ALERT) {
+    msg.templateId = TEMPLATE_INTERNAL_ALERT;
+    msg.dynamicTemplateData = {
       legalCompanyName,
       contactEmail,
       contactName: `${contactFirstName} ${contactLastName}`,
       ein,
       resellerId,
       submittedAt: new Date().toISOString(),
-    },
-    customArgs: {
-      reseller_ein: ein,
-      reseller_id: resellerId,
-    },
-  };
+    };
+  } else {
+    msg.subject = `New AETI reseller submission: ${legalCompanyName}`;
+    msg.text = `A new reseller has submitted the onboarding form.\n\nCompany: ${legalCompanyName}\nContact: ${contactFirstName} ${contactLastName}\nEmail: ${contactEmail}\nEIN: ${ein}\nReseller ID: ${resellerId}\nSubmitted: ${new Date().toISOString()}`;
+  }
 
   await sgMail.send(msg);
 }
