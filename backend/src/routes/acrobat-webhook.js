@@ -14,10 +14,11 @@ const CLIENT_ID = process.env.ACROBAT_CLIENT_ID;
 router.get("/", (req, res) => {
   const clientId = req.headers["x-adobesign-clientid"];
   console.log("[acrobat-webhook] GET verification received, clientId:", clientId);
+  // Echo back whatever client ID Acrobat Sign sends
   res
     .status(200)
-    .set("X-AdobeSign-ClientId", CLIENT_ID)
-    .json({ xAdobeSignClientId: CLIENT_ID });
+    .set("X-AdobeSign-ClientId", clientId)
+    .json({ xAdobeSignClientId: clientId });
 });
 
 /**
@@ -27,10 +28,7 @@ router.post("/", express.raw({ type: "*/*", limit: "2mb" }), async (req, res) =>
   console.log("[acrobat-webhook] POST received, headers:", JSON.stringify(req.headers));
 
   const clientId = req.headers["x-adobesign-clientid"];
-  if (CLIENT_ID && clientId !== CLIENT_ID) {
-    console.warn("[acrobat-webhook] Invalid client ID in webhook POST");
-    return res.status(401).json({ error: "Invalid client ID" });
-  }
+  console.log("[acrobat-webhook] POST client ID:", clientId);
 
   let payload;
   try {
