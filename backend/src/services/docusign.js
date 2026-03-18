@@ -96,13 +96,6 @@ async function sendNdaEnvelope({ resellerId, legalCompanyName, contactEmail, con
 
   envelopeDefinition.templateRoles = [resellerSigner, legalSigner];
 
-  // Custom metadata for tracking
-  envelopeDefinition.customFields = docusign.CustomFields.constructFromObject({
-    textCustomFields: [
-      { name: "resellerId", value: resellerId, show: false, required: false },
-    ],
-  });
-
   console.log("[docusign] Creating envelope with:", JSON.stringify({
     accountId: ACCOUNT_ID,
     templateId: NDA_TEMPLATE_ID,
