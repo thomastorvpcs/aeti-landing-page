@@ -29,11 +29,15 @@ router.post("/", express.raw({ type: "*/*", limit: "2mb" }), async (req, res) =>
 
   const clientId = req.headers["x-adobesign-clientid"];
   console.log("[acrobat-webhook] POST client ID:", clientId);
+  console.log("[acrobat-webhook] body type:", typeof req.body, "isBuffer:", Buffer.isBuffer(req.body), "length:", req.body?.length);
 
   let payload;
   try {
-    payload = JSON.parse(req.body.toString("utf8"));
-  } catch {
+    const raw = Buffer.isBuffer(req.body) ? req.body.toString("utf8") : JSON.stringify(req.body);
+    console.log("[acrobat-webhook] raw body:", raw.substring(0, 500));
+    payload = JSON.parse(raw);
+  } catch (e) {
+    console.error("[acrobat-webhook] JSON parse error:", e.message);
     return res.status(400).json({ error: "Invalid JSON" });
   }
 
