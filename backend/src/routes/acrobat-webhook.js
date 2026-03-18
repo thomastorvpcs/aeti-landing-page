@@ -6,26 +6,26 @@ const router = express.Router();
 
 const CLIENT_ID = process.env.ACROBAT_CLIENT_ID;
 
-// Parse raw body so we can inspect headers before parsing JSON
-router.use(express.raw({ type: "*/*", limit: "2mb" }));
-
 /**
  * Acrobat Sign webhook verification.
- * When you register a webhook, Acrobat Sign sends a GET (or POST with no body)
- * containing X-AdobeSign-ClientId. Respond with 200 and echo the header back.
+ * Acrobat Sign sends a GET with X-AdobeSign-ClientId header.
+ * Must respond 200 with the client ID in header AND body.
  */
 router.get("/", (req, res) => {
   const clientId = req.headers["x-adobesign-clientid"];
-  if (clientId !== CLIENT_ID) {
-    console.warn("[acrobat-webhook] Verification failed — client ID mismatch");
-    return res.status(400).send("Invalid client ID");
-  }
-  res.set("X-AdobeSign-ClientId", CLIENT_ID).status(200).send("OK");
+  console.log("[acrobat-webhook] GET verification received, clientId:", clientId);
+  res
+    .status(200)
+    .set("X-AdobeSign-ClientId", CLIENT_ID)
+    .json({ xAdobeSignClientId: CLIENT_ID });
 });
 
-router.post("/", async (req, res) => {
+/**
+ * Acrobat Sign webhook event handler.
+ */
+router.post("/", express.raw({ type: "*/*", limit: "2mb" }), async (req, res) => {
   console.log("[acrobat-webhook] POST received, headers:", JSON.stringify(req.headers));
-  // Verify the request is from Acrobat Sign
+
   const clientId = req.headers["x-adobesign-clientid"];
   if (CLIENT_ID && clientId !== CLIENT_ID) {
     console.warn("[acrobat-webhook] Invalid client ID in webhook POST");
