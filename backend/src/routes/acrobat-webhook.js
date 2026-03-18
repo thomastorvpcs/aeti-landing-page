@@ -49,8 +49,10 @@ router.post("/", express.raw({ type: "*/*", limit: "2mb" }), async (req, res) =>
   // Acknowledge immediately — Acrobat Sign expects a fast 200
   res.status(200).json({ received: true });
 
-  // Only process fully completed agreements
-  if (event !== "AGREEMENT_WORKFLOW_COMPLETED") return;
+  // Process when fully complete OR when the last action is completed
+  const isComplete = event === "AGREEMENT_WORKFLOW_COMPLETED" ||
+    (event === "AGREEMENT_ACTION_COMPLETED" && payload.participantUserEmail === process.env.PCS_LEGAL_EMAIL);
+  if (!isComplete) return;
   if (!agreementId) return;
 
   try {
