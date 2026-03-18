@@ -52,46 +52,51 @@ async function handleResellerSubmitted(payload) {
   if (!rows.length) throw new Error(`Reseller ${resellerId} not found`);
   const reseller = rows[0];
 
-  // 1. Create NetSuite vendor
-  const netsuiteVendorId = await withRetry(
-    () => createVendor({
-      ein,
-      legalCompanyName,
-      entityType: reseller.entity_type,
-      addressStreet: reseller.address_street,
-      addressCity: reseller.address_city,
-      addressState: reseller.address_state,
-      addressZip: reseller.address_zip,
-      contactEmail,
-      contactPhone: reseller.contact_phone,
-      contactFirstName,
-      contactLastName,
-    }),
-    "NetSuite createVendor"
-  );
+  // 1. Create NetSuite vendor (skip if credentials not configured)
+  let netsuiteVendorId = null;
+  if (process.env.NETSUITE_ACCOUNT_ID) {
+    netsuiteVendorId = await withRetry(
+      () => createVendor({
+        ein,
+        legalCompanyName,
+        entityType: reseller.entity_type,
+        addressStreet: reseller.address_street,
+        addressCity: reseller.address_city,
+        addressState: reseller.address_state,
+        addressZip: reseller.address_zip,
+        contactEmail,
+        contactPhone: reseller.contact_phone,
+        contactFirstName,
+        contactLastName,
+      }),
+      "NetSuite createVendor"
+    );
 
-  // 2. Attach W-9 to NetSuite vendor
-  const w9Buffer = await withRetry(() => downloadFile(w9Key), "S3 downloadFile(w9)");
-  await withRetry(
-    () => attachFileToVendor({
-      netsuiteVendorId,
-      fileName: `W9_${legalCompanyName.replace(/\s+/g, "_")}.pdf`,
-      fileBuffer: w9Buffer,
-      mimeType: "application/pdf",
-    }),
-    "NetSuite attachW9"
-  );
+    // 2. Attach W-9 to NetSuite vendor
+    const w9Buffer = await withRetry(() => downloadFile(w9Key), "S3 downloadFile(w9)");
+    await withRetry(
+      () => attachFileToVendor({
+        netsuiteVendorId,
+        fileName: `W9_${legalCompanyName.replace(/\s+/g, "_")}.pdf`,
+        fileBuffer: w9Buffer,
+        mimeType: "application/pdf",
+      }),
+      "NetSuite attachW9"
+    );
 
-  // 3. Create NetSuite Task for Finance (docs received)
-  await withRetry(
-    () => createTask({
-      title: `New reseller submission: ${legalCompanyName}`,
-      message: `Reseller ${legalCompanyName} (EIN: ${ein}) has submitted the onboarding form. W-9 attached. Please confirm banking details.`,
-      assigneeEmployeeId: process.env.NETSUITE_FINANCE_EMPLOYEE_ID,
-      relatedVendorId: netsuiteVendorId,
-    }),
-    "NetSuite createTask(finance)"
-  );
+    // 3. Create NetSuite Task for Finance
+    await withRetry(
+      () => createTask({
+        title: `New reseller submission: ${legalCompanyName}`,
+        message: `Reseller ${legalCompanyName} (EIN: ${ein}) has submitted the onboarding form. W-9 attached. Please confirm banking details.`,
+        assigneeEmployeeId: process.env.NETSUITE_FINANCE_EMPLOYEE_ID,
+        relatedVendorId: netsuiteVendorId,
+      }),
+      "NetSuite createTask(finance)"
+    );
+  } else {
+    console.warn("[worker] NETSUITE_ACCOUNT_ID not set — skipping NetSuite steps");
+  }
 
   // 4. Send DocuSign NDA
   const envelopeId = await withRetry(
