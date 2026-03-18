@@ -24,6 +24,7 @@ router.get("/", (req, res) => {
 });
 
 router.post("/", async (req, res) => {
+  console.log("[acrobat-webhook] POST received, headers:", JSON.stringify(req.headers));
   // Verify the request is from Acrobat Sign
   const clientId = req.headers["x-adobesign-clientid"];
   if (CLIENT_ID && clientId !== CLIENT_ID) {
