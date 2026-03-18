@@ -23,12 +23,13 @@ async function withRetry(fn, label) {
     try {
       return await fn();
     } catch (err) {
+      const detail = err.response?.body || err.response?.data || err.message;
       if (attempt === MAX_RETRIES) {
-        console.error(`[worker] ${label} failed after ${MAX_RETRIES} attempts:`, err.message);
+        console.error(`[worker] ${label} failed after ${MAX_RETRIES} attempts:`, JSON.stringify(detail));
         throw err;
       }
       const delay = RETRY_BASE_MS * Math.pow(2, attempt - 1);
-      console.warn(`[worker] ${label} attempt ${attempt} failed. Retrying in ${delay}ms...`);
+      console.warn(`[worker] ${label} attempt ${attempt} failed. Retrying in ${delay}ms...`, JSON.stringify(detail));
       await sleep(delay);
     }
   }
