@@ -89,6 +89,7 @@ async function sendNdaAgreement({
     state: "IN_PROCESS",
     mergeFieldInfo: [
       { fieldName: "LegalCompanyName", defaultValue: legalCompanyName },
+      { fieldName: "LegalCompanyName_2", defaultValue: legalCompanyName },
       { fieldName: "CompanyAddress", defaultValue: `${addressCity}, ${addressState}` },
       { fieldName: "EffectiveDay", defaultValue: effectiveDay },
       { fieldName: "EffectiveMonth", defaultValue: effectiveMonth },
