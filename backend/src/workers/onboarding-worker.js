@@ -255,7 +255,12 @@ async function pollPendingAgreements() {
         console.log(`[worker] Polled NDA_COMPLETED enqueued for reseller ${reseller.id}`);
       }
     } catch (err) {
-      console.error(`[worker] Poll check failed for reseller ${reseller.id}:`, err.message);
+      if (err.response?.status === 404) {
+        await pool.query("UPDATE resellers SET status = $1 WHERE id = $2", ["Cancelled", reseller.id]);
+        console.warn(`[worker] Agreement not found (404), marking reseller ${reseller.id} as Cancelled`);
+      } else {
+        console.error(`[worker] Poll check failed for reseller ${reseller.id}:`, err.message);
+      }
     }
   }
 }
