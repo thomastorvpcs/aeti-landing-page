@@ -108,6 +108,12 @@ async function createVendor(reseller) {
     isPerson: false,
     email: contactEmail,
     phone: contactPhone,
+    category: { id: "6" },
+    terms: { id: "7" },
+    custentity_pcs_region: { id: "14" },
+    custentity_pcs_purchase_channel: { id: "15" },
+    custentity_pcs_buyer: { id: "162" },
+    cseg_purch_program: { id: "16" },
     custentity_onboarding_status: "Initiated",
     // Address subrecord
     addressbook: {
