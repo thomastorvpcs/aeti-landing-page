@@ -6,6 +6,7 @@ const { uploadFile, downloadFile } = require("../services/s3");
 const { sendNdaAgreement, downloadSignedNda, getAgreementStatus } = require("../services/acrobat-sign");
 const { createVendor, updateVendorStatus, attachFileToVendor, createTask } = require("../services/netsuite");
 const { sendWelcomeEmail, sendInternalAlert } = require("../services/sendgrid");
+const { generateAuthorizationLetter } = require("../services/pdf");
 
 const MAX_RETRIES = 5;
 const RETRY_BASE_MS = 2000; // exponential backoff base
@@ -195,7 +196,13 @@ async function handleNdaCompleted(payload) {
     );
   }
 
-  // 7. Send welcome email with signed NDA attached
+  // 7. Generate authorization letter
+  const programLetterPdf = await withRetry(
+    () => generateAuthorizationLetter({ legalCompanyName }),
+    "generateAuthorizationLetter"
+  );
+
+  // 8. Send welcome email with signed NDA and authorization letter attached
   await withRetry(
     () => sendWelcomeEmail({
       to: contactEmail,
@@ -203,6 +210,7 @@ async function handleNdaCompleted(payload) {
       lastName: contactLastName,
       legalCompanyName,
       signedNdaPdf,
+      programLetterPdf,
       ein: reseller.ein,
       envelopeId,
       netsuiteVendorId: reseller.netsuite_vendor_id,
