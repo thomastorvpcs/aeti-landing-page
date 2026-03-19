@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import ProgressIndicator from "./ProgressIndicator";
 import Step1Company from "./Step1Company";
@@ -86,15 +86,35 @@ function validateStep(step, formData, w9File) {
   return errors;
 }
 
+const SESSION_KEY = "aeti_onboarding";
+
+function loadSession() {
+  try {
+    const saved = sessionStorage.getItem(SESSION_KEY);
+    if (!saved) return null;
+    return JSON.parse(saved);
+  } catch {
+    return null;
+  }
+}
+
 export default function OnboardingForm() {
-  const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState(INITIAL_FORM);
+  const session = loadSession();
+  const [step, setStep] = useState(session?.step || 1);
+  const [formData, setFormData] = useState(session?.formData || INITIAL_FORM);
   const [w9File, setW9File] = useState(null);
   const [agreed, setAgreed] = useState(false);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const [submitted, setSubmitted] = useState(false);
+
+  // Persist form data and step to sessionStorage whenever they change
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({ step, formData }));
+    } catch {}
+  }, [step, formData]);
 
   const handleChange = (name, value) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -139,6 +159,7 @@ export default function OnboardingForm() {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
+      sessionStorage.removeItem(SESSION_KEY);
       setSubmitted(true);
     } catch (err) {
       const msg =
