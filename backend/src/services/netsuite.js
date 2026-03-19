@@ -19,6 +19,9 @@ const crypto = require("crypto");
  */
 
 const ACCOUNT_ID = process.env.NETSUITE_ACCOUNT_ID;
+// URL uses lowercase with dash (e.g. 4914507-sb1)
+// OAuth realm uses uppercase with underscore (e.g. 4914507_SB1)
+const ACCOUNT_ID_REALM = ACCOUNT_ID.replace(/-/g, "_").toUpperCase();
 const BASE_URL = `https://${ACCOUNT_ID}.suitetalk.api.netsuite.com/services/rest/record/v1`;
 
 function buildAuthHeader(method, url) {
@@ -50,7 +53,7 @@ function buildAuthHeader(method, url) {
     .digest("base64");
 
   return (
-    `OAuth realm="${ACCOUNT_ID}",` +
+    `OAuth realm="${ACCOUNT_ID_REALM}",` +
     `oauth_consumer_key="${process.env.NETSUITE_CONSUMER_KEY}",` +
     `oauth_token="${process.env.NETSUITE_TOKEN_ID}",` +
     `oauth_signature_method="HMAC-SHA256",` +
