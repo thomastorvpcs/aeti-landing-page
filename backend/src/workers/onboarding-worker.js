@@ -1,7 +1,7 @@
 require("dotenv").config();
 
 const pool = require("../db");
-const { receive, ack } = require("../services/queue");
+const { receive, ack, enqueue } = require("../services/queue");
 const { uploadFile, downloadFile } = require("../services/s3");
 const { sendNdaAgreement, downloadSignedNda, getAgreementStatus } = require("../services/acrobat-sign");
 const { createVendor, updateVendorStatus, attachFileToVendor, createTask } = require("../services/netsuite");
