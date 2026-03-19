@@ -3,6 +3,7 @@ import axios from "axios";
 import ProgressIndicator from "./ProgressIndicator";
 import Step1Company from "./Step1Company";
 import Step2Contact from "./Step2Contact";
+import Step3Finance from "./Step3Finance";
 import Step3Documents from "./Step3Documents";
 import Step4Review from "./Step4Review";
 import Confirmation from "./Confirmation";
@@ -18,14 +19,27 @@ const INITIAL_FORM = {
   addressCity: "",
   addressState: "",
   addressZip: "",
+  addressCountry: "United States",
+  website: "",
+  billingAddressStreet: "",
+  billingAddressCity: "",
+  billingAddressState: "",
+  billingAddressZip: "",
+  billingAddressCountry: "",
   contactFirstName: "",
   contactLastName: "",
   contactTitle: "",
   contactEmail: "",
   contactPhone: "",
-  apName: "",
-  apEmail: "",
-  apPhone: "",
+  financeContactName: "",
+  financeContactTitle: "",
+  financeContactEmail: "",
+  financeContactPhone: "",
+  bankName: "",
+  bankAddress: "",
+  bankAccountNumber: "",
+  bankAba: "",
+  bankSwift: "",
 };
 
 function validateStep(step, formData, w9File) {
@@ -50,12 +64,22 @@ function validateStep(step, formData, w9File) {
     } else if (!EMAIL_REGEX.test(formData.contactEmail)) {
       errors.contactEmail = "Enter a valid email address.";
     }
-    if (formData.apEmail && !EMAIL_REGEX.test(formData.apEmail)) {
-      errors.apEmail = "Enter a valid AP email address.";
-    }
   }
 
   if (step === 3) {
+    if (!formData.financeContactName.trim()) errors.financeContactName = "Finance contact name is required.";
+    if (!formData.financeContactEmail.trim()) {
+      errors.financeContactEmail = "Finance contact email is required.";
+    } else if (!EMAIL_REGEX.test(formData.financeContactEmail)) {
+      errors.financeContactEmail = "Enter a valid email address.";
+    }
+    if (!formData.financeContactPhone.trim()) errors.financeContactPhone = "Finance contact phone is required.";
+    if (!formData.bankName.trim()) errors.bankName = "Bank name is required.";
+    if (!formData.bankAccountNumber.trim()) errors.bankAccountNumber = "Account number is required.";
+    if (!formData.bankAba.trim()) errors.bankAba = "ABA routing number is required.";
+  }
+
+  if (step === 4) {
     if (!w9File) errors.w9File = "Please upload your W-9 before continuing.";
   }
 
@@ -96,7 +120,7 @@ export default function OnboardingForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const stepErrors = validateStep(4, formData, w9File);
+    const stepErrors = validateStep(5, formData, w9File);
     if (!agreed) stepErrors.agreed = "You must confirm accuracy before submitting.";
     if (Object.keys(stepErrors).length > 0) {
       setErrors(stepErrors);
@@ -144,9 +168,12 @@ export default function OnboardingForm() {
               <Step2Contact data={formData} onChange={handleChange} errors={errors} />
             )}
             {step === 3 && (
-              <Step3Documents w9File={w9File} onW9Change={setW9File} errors={errors} />
+              <Step3Finance data={formData} onChange={handleChange} errors={errors} />
             )}
             {step === 4 && (
+              <Step3Documents w9File={w9File} onW9Change={setW9File} errors={errors} />
+            )}
+            {step === 5 && (
               <Step4Review
                 formData={formData}
                 w9File={w9File}
@@ -180,7 +207,7 @@ export default function OnboardingForm() {
                 <p className="text-xs text-red-600 text-right max-w-xs">{submitError}</p>
               )}
 
-              {step < 4 ? (
+              {step < 5 ? (
                 <button type="button" onClick={handleNext} className="btn-primary">
                   Continue
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

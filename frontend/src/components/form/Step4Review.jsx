@@ -26,20 +26,28 @@ function Section({ title, children }) {
 export default function Step4Review({ formData, w9File, agreed, onAgreedChange, errors }) {
   const {
     legalCompanyName, dba, ein, entityType,
-    addressStreet, addressCity, addressState, addressZip,
+    addressStreet, addressCity, addressState, addressZip, addressCountry,
+    billingAddressStreet, billingAddressCity, billingAddressState, billingAddressZip, billingAddressCountry,
+    website,
     contactFirstName, contactLastName, contactTitle, contactEmail, contactPhone,
-    apName, apEmail, apPhone,
+    financeContactName, financeContactTitle, financeContactEmail, financeContactPhone,
+    bankName, bankAddress, bankAccountNumber, bankAba, bankSwift,
   } = formData;
 
   const fullName = [contactFirstName, contactLastName].filter(Boolean).join(" ");
-  const fullAddress = [addressStreet, addressCity, addressState, addressZip]
+  const fullAddress = [addressStreet, addressCity, addressState, addressZip, addressCountry]
+    .filter(Boolean)
+    .join(", ");
+
+  const hasBillingAddress = billingAddressStreet || billingAddressCity || billingAddressState || billingAddressZip;
+  const fullBillingAddress = [billingAddressStreet, billingAddressCity, billingAddressState, billingAddressZip, billingAddressCountry]
     .filter(Boolean)
     .join(", ");
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold text-brand-navy">Review & submit</h2>
+        <h2 className="text-xl font-bold text-brand-navy">Review &amp; submit</h2>
         <p className="text-sm text-gray-500 mt-1">
           Please confirm your information before submitting.
         </p>
@@ -51,6 +59,10 @@ export default function Step4Review({ formData, w9File, agreed, onAgreedChange, 
         <ReviewRow label="EIN / Tax ID" value={ein} />
         <ReviewRow label="Entity type" value={entityType} />
         <ReviewRow label="Address" value={fullAddress} />
+        {hasBillingAddress && (
+          <ReviewRow label="Billing address" value={fullBillingAddress} />
+        )}
+        <ReviewRow label="Website" value={website} />
       </Section>
 
       <Section title="Contact">
@@ -58,13 +70,21 @@ export default function Step4Review({ formData, w9File, agreed, onAgreedChange, 
         <ReviewRow label="Title" value={contactTitle} />
         <ReviewRow label="Email" value={contactEmail} />
         <ReviewRow label="Phone" value={contactPhone} />
-        {(apName || apEmail || apPhone) && (
-          <>
-            <ReviewRow label="AP contact" value={apName} />
-            <ReviewRow label="AP email" value={apEmail} />
-            <ReviewRow label="AP phone" value={apPhone} />
-          </>
-        )}
+      </Section>
+
+      <Section title="Finance contact">
+        <ReviewRow label="Name" value={financeContactName} />
+        <ReviewRow label="Title" value={financeContactTitle} />
+        <ReviewRow label="Email" value={financeContactEmail} />
+        <ReviewRow label="Phone" value={financeContactPhone} />
+      </Section>
+
+      <Section title="Banking details">
+        <ReviewRow label="Bank name" value={bankName} />
+        <ReviewRow label="Bank address" value={bankAddress} />
+        <ReviewRow label="Account #" value={bankAccountNumber} />
+        <ReviewRow label="ABA routing #" value={bankAba} />
+        <ReviewRow label="SWIFT code" value={bankSwift} />
       </Section>
 
       <Section title="Documents">

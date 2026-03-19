@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 
 const ENTITY_TYPES = [
   "LLC",
@@ -17,6 +17,19 @@ const US_STATES = [
 ];
 
 export default function Step1Company({ data, onChange, errors }) {
+  const [billingSame, setBillingSame] = useState(true);
+
+  const handleBillingSameChange = (checked) => {
+    setBillingSame(checked);
+    if (checked) {
+      onChange("billingAddressStreet", "");
+      onChange("billingAddressCity", "");
+      onChange("billingAddressState", "");
+      onChange("billingAddressZip", "");
+      onChange("billingAddressCountry", "");
+    }
+  };
+
   const field = (name) => ({
     id: name,
     name,
@@ -174,6 +187,114 @@ export default function Step1Company({ data, onChange, errors }) {
             <p id="addressZip-error" className="form-error">{errors.addressZip}</p>
           )}
         </div>
+      </div>
+
+      {/* Country */}
+      <div>
+        <label className="form-label" htmlFor="addressCountry">
+          Country <span className="text-gray-400 font-normal">(optional)</span>
+        </label>
+        <input
+          type="text"
+          placeholder="United States"
+          autoComplete="country-name"
+          {...field("addressCountry")}
+        />
+      </div>
+
+      {/* Billing address */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-base font-semibold text-brand-navy">Billing address</h3>
+        </div>
+        <label className="flex items-center gap-2 cursor-pointer mb-4">
+          <input
+            type="checkbox"
+            checked={billingSame}
+            onChange={(e) => handleBillingSameChange(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 text-brand-blue focus:ring-brand-blue"
+          />
+          <span className="text-sm text-gray-700">Same as business address</span>
+        </label>
+
+        {!billingSame && (
+          <div className="space-y-4">
+            <div>
+              <label className="form-label" htmlFor="billingAddressStreet">
+                Billing street address
+              </label>
+              <input
+                type="text"
+                placeholder="123 Main Street, Suite 400"
+                autoComplete="billing street-address"
+                {...field("billingAddressStreet")}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="sm:col-span-1">
+                <label className="form-label" htmlFor="billingAddressCity">
+                  City
+                </label>
+                <input
+                  type="text"
+                  placeholder="New York"
+                  autoComplete="billing address-level2"
+                  {...field("billingAddressCity")}
+                />
+              </div>
+
+              <div>
+                <label className="form-label" htmlFor="billingAddressState">
+                  State
+                </label>
+                <input
+                  type="text"
+                  placeholder="NY"
+                  {...field("billingAddressState")}
+                />
+              </div>
+
+              <div>
+                <label className="form-label" htmlFor="billingAddressZip">
+                  ZIP
+                </label>
+                <input
+                  type="text"
+                  placeholder="10001"
+                  maxLength={10}
+                  autoComplete="billing postal-code"
+                  {...field("billingAddressZip")}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="form-label" htmlFor="billingAddressCountry">
+                Country
+              </label>
+              <input
+                type="text"
+                placeholder="United States"
+                autoComplete="billing country-name"
+                {...field("billingAddressCountry")}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Website */}
+      <div>
+        <label className="form-label" htmlFor="website">
+          Website <span className="text-gray-400 font-normal">(optional)</span>
+        </label>
+        <input
+          type="text"
+          placeholder="https://www.example.com"
+          autoComplete="url"
+          {...field("website")}
+        />
       </div>
     </div>
   );

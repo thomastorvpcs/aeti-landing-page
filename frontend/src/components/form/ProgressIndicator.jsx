@@ -2,7 +2,8 @@ import React from "react";
 
 const STEPS = [
   { label: "Company info" },
-  { label: "Contact" },
+  { label: "Commercial contact" },
+  { label: "Finance & banking" },
   { label: "Documents" },
   { label: "Review" },
 ];

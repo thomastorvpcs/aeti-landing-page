@@ -47,6 +47,20 @@ app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.use("/api/submit", submissionRateLimiter, submissionRouter);
 app.use("/acrobat/webhook", acrobatWebhookRouter);
 
+// Temporary admin route to run DB migration
+app.get("/admin/run-migration", async (_req, res) => {
+  try {
+    const pool = require("./db");
+    const fs = require("fs");
+    const path = require("path");
+    const sql = fs.readFileSync(path.join(__dirname, "db/migrations/002_add_vendor_fields.sql"), "utf8");
+    await pool.query(sql);
+    res.json({ success: true });
+  } catch (err) {
+    res.json({ error: err.message });
+  }
+});
+
 // SPA fallback — all unmatched routes serve index.html
 app.get("*", (_req, res) => {
   res.sendFile(path.join(frontendDist, "index.html"));

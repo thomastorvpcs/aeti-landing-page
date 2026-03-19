@@ -18,14 +18,27 @@ router.post("/", upload.single("w9"), async (req, res, next) => {
       addressCity,
       addressState,
       addressZip,
+      addressCountry,
+      website,
+      billingAddressStreet,
+      billingAddressCity,
+      billingAddressState,
+      billingAddressZip,
+      billingAddressCountry,
       contactFirstName,
       contactLastName,
       contactTitle,
       contactEmail,
       contactPhone,
-      apName,
-      apEmail,
-      apPhone,
+      financeContactName,
+      financeContactTitle,
+      financeContactEmail,
+      financeContactPhone,
+      bankName,
+      bankAddress,
+      bankAccountNumber,
+      bankAba,
+      bankSwift,
     } = req.body;
 
     // Basic server-side validation
@@ -41,6 +54,12 @@ router.post("/", upload.single("w9"), async (req, res, next) => {
       contactLastName,
       contactEmail,
       contactPhone,
+      financeContactName,
+      financeContactEmail,
+      financeContactPhone,
+      bankName,
+      bankAccountNumber,
+      bankAba,
     };
 
     const missing = Object.entries(required)
@@ -71,13 +90,16 @@ router.post("/", upload.single("w9"), async (req, res, next) => {
     const result = await pool.query(
       `INSERT INTO resellers (
         id, legal_company_name, dba, ein, entity_type,
-        address_street, address_city, address_state, address_zip,
+        address_street, address_city, address_state, address_zip, address_country,
+        billing_address_street, billing_address_city, billing_address_state, billing_address_zip, billing_address_country,
+        website,
         contact_first_name, contact_last_name, contact_title,
         contact_email, contact_phone,
-        ap_name, ap_email, ap_phone,
+        finance_contact_name, finance_contact_title, finance_contact_email, finance_contact_phone,
+        bank_name, bank_address, bank_account_number, bank_aba, bank_swift,
         w9_s3_key, status
       ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32
       )
       ON CONFLICT (ein) DO UPDATE SET
         legal_company_name  = EXCLUDED.legal_company_name,
@@ -93,14 +115,27 @@ router.post("/", upload.single("w9"), async (req, res, next) => {
         addressCity.trim(),
         addressState,
         addressZip.trim(),
+        addressCountry?.trim() || null,
+        billingAddressStreet?.trim() || null,
+        billingAddressCity?.trim() || null,
+        billingAddressState?.trim() || null,
+        billingAddressZip?.trim() || null,
+        billingAddressCountry?.trim() || null,
+        website?.trim() || null,
         contactFirstName.trim(),
         contactLastName.trim(),
         contactTitle?.trim() || null,
         contactEmail.trim().toLowerCase(),
         contactPhone.trim(),
-        apName?.trim() || null,
-        apEmail?.trim().toLowerCase() || null,
-        apPhone?.trim() || null,
+        financeContactName.trim(),
+        financeContactTitle?.trim() || null,
+        financeContactEmail.trim().toLowerCase(),
+        financeContactPhone.trim(),
+        bankName.trim(),
+        bankAddress?.trim() || null,
+        bankAccountNumber.trim(),
+        bankAba.trim(),
+        bankSwift?.trim() || null,
         w9Key,
         "Initiated",
       ]
