@@ -4,7 +4,6 @@ const { enqueue } = require("../services/queue");
 
 const router = express.Router();
 
-const CLIENT_ID = process.env.ACROBAT_CLIENT_ID;
 
 /**
  * Acrobat Sign webhook verification.
@@ -24,7 +23,7 @@ router.get("/", (req, res) => {
 /**
  * Acrobat Sign webhook event handler.
  */
-router.post("/", express.raw({ type: "*/*", limit: "2mb" }), async (req, res) => {
+router.post("/", async (req, res) => {
   console.log("[acrobat-webhook] POST received, headers:", JSON.stringify(req.headers));
 
   const clientId = req.headers["x-adobesign-clientid"];
