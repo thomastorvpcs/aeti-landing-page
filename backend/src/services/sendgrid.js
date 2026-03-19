@@ -56,13 +56,6 @@ async function sendWelcomeEmail({
   const msg = {
     to,
     from: { email: FROM_EMAIL, name: FROM_NAME },
-    templateId: TEMPLATE_WELCOME,
-    dynamicTemplateData: {
-      firstName,
-      lastName,
-      legalCompanyName,
-      supportEmail: "resellers@pcsww.com",
-    },
     attachments,
     customArgs: {
       reseller_ein: ein,
@@ -70,6 +63,19 @@ async function sendWelcomeEmail({
       netsuite_vendor_id: netsuiteVendorId || "",
     },
   };
+
+  if (TEMPLATE_WELCOME) {
+    msg.templateId = TEMPLATE_WELCOME;
+    msg.dynamicTemplateData = {
+      firstName,
+      lastName,
+      legalCompanyName,
+      supportEmail: "resellers@pcsww.com",
+    };
+  } else {
+    msg.subject = `Welcome to the AETI Reseller Program, ${firstName}!`;
+    msg.text = `Hi ${firstName},\n\nThank you for signing the NDA. Your signed agreement is attached.\n\nWelcome to the AETI Reseller Program!\n\nIf you have any questions, contact us at resellers@pcsww.com.\n\nBest regards,\nPCS Partner Program`;
+  }
 
   await sgMail.send(msg);
 }
