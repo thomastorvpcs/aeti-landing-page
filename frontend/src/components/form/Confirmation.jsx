@@ -20,12 +20,6 @@ const NEXT_STEPS = [
     description:
       "Our finance team will call to verify banking details and send a $1 test payment to confirm the ACH/wire channel.",
   },
-  {
-    step: 4,
-    title: "Partner portal access",
-    description:
-      "Once banking is confirmed, PCS Operations will provision your partner portal credentials and complete activation.",
-  },
 ];
 
 export default function Confirmation({ formData }) {
