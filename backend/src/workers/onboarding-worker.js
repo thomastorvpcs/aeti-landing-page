@@ -3,7 +3,7 @@ require("dotenv").config();
 const pool = require("../db");
 const { receive, ack } = require("../services/queue");
 const { uploadFile, downloadFile } = require("../services/s3");
-const { sendNdaAgreement, downloadSignedNda } = require("../services/acrobat-sign");
+const { sendNdaAgreement, downloadSignedNda, getAgreementStatus } = require("../services/acrobat-sign");
 const { createVendor, updateVendorStatus, attachFileToVendor, createTask } = require("../services/netsuite");
 const { sendWelcomeEmail, sendInternalAlert } = require("../services/sendgrid");
 
@@ -213,6 +213,47 @@ async function handleNdaCompleted(payload) {
   console.log(`[worker] NDA_COMPLETED processed: reseller=${resellerId}`);
 }
 
+// ─── Agreement status polling ───────────────────────────────────────────────────
+
+/**
+ * Poll all NDA Pending resellers and process any whose agreement is now SIGNED.
+ * Runs every 5 minutes as a fallback when the webhook misses the final signing event.
+ */
+async function pollPendingAgreements() {
+  const { rows } = await pool.query(
+    `SELECT id, docusign_envelope_id, contact_email, contact_first_name, contact_last_name, legal_company_name
+     FROM resellers WHERE status = 'NDA Pending' AND docusign_envelope_id IS NOT NULL`
+  );
+
+  if (rows.length === 0) return;
+  console.log(`[worker] Polling ${rows.length} pending agreement(s)...`);
+
+  for (const reseller of rows) {
+    try {
+      const status = await getAgreementStatus(reseller.docusign_envelope_id);
+      console.log(`[worker] Agreement ${reseller.docusign_envelope_id} status: ${status}`);
+
+      if (status === "SIGNED") {
+        await pool.query(
+          "UPDATE resellers SET status = $1, signed_at = NOW() WHERE id = $2",
+          ["NDA Complete", reseller.id]
+        );
+        await enqueue("NDA_COMPLETED", {
+          resellerId: reseller.id,
+          envelopeId: reseller.docusign_envelope_id,
+          contactEmail: reseller.contact_email,
+          contactFirstName: reseller.contact_first_name,
+          contactLastName: reseller.contact_last_name,
+          legalCompanyName: reseller.legal_company_name,
+        });
+        console.log(`[worker] Polled NDA_COMPLETED enqueued for reseller ${reseller.id}`);
+      }
+    } catch (err) {
+      console.error(`[worker] Poll check failed for reseller ${reseller.id}:`, err.message);
+    }
+  }
+}
+
 // ─── Main polling loop ──────────────────────────────────────────────────────────
 
 async function processMessage(msg) {
@@ -233,6 +274,10 @@ async function processMessage(msg) {
 
 async function run() {
   console.log("[worker] Onboarding worker started. Polling SQS...");
+
+  // Poll Acrobat Sign every 5 minutes as fallback for missed webhook events
+  pollPendingAgreements().catch(console.error);
+  setInterval(() => pollPendingAgreements().catch(console.error), 5 * 60 * 1000);
 
   while (true) {
     let msg = null;

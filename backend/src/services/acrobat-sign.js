@@ -144,4 +144,13 @@ async function getLibraryTemplates() {
   return response.data;
 }
 
-module.exports = { sendNdaAgreement, downloadSignedNda, registerWebhook, getLibraryTemplates };
+/**
+ * Fetch the current status of an agreement.
+ */
+async function getAgreementStatus(agreementId) {
+  const client = await apiClient();
+  const response = await client.get(`/agreements/${agreementId}`);
+  return response.data.status; // e.g. "SIGNED", "OUT_FOR_SIGNATURE", "CANCELLED"
+}
+
+module.exports = { sendNdaAgreement, downloadSignedNda, registerWebhook, getLibraryTemplates, getAgreementStatus };
