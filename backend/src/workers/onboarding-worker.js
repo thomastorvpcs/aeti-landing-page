@@ -233,6 +233,12 @@ async function pollPendingAgreements() {
       const status = await getAgreementStatus(reseller.docusign_envelope_id);
       console.log(`[worker] Agreement ${reseller.docusign_envelope_id} status: ${status}`);
 
+      if (status === "CANCELLED" || status === "RECALLED") {
+        await pool.query("UPDATE resellers SET status = $1 WHERE id = $2", ["Cancelled", reseller.id]);
+        console.log(`[worker] Agreement cancelled, marking reseller ${reseller.id} as Cancelled`);
+        continue;
+      }
+
       if (status === "SIGNED") {
         await pool.query(
           "UPDATE resellers SET status = $1, signed_at = NOW() WHERE id = $2",
