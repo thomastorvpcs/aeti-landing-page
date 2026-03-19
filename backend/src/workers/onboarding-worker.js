@@ -100,16 +100,18 @@ async function handleResellerSubmitted(payload) {
       );
     }
 
-    // 4. Create NetSuite Task for Finance
-    await withRetry(
-      () => createTask({
-        title: `New reseller submission: ${legalCompanyName}`,
-        message: `Reseller ${legalCompanyName} (EIN: ${ein}) has submitted the onboarding form. W-9 attached. Please confirm banking details.`,
-        assigneeEmployeeId: process.env.NETSUITE_FINANCE_EMPLOYEE_ID,
-        relatedVendorId: netsuiteVendorId,
-      }),
-      "NetSuite createTask(finance)"
-    );
+    // 4. Create NetSuite Task for Finance (optional)
+    if (process.env.NETSUITE_FINANCE_EMPLOYEE_ID) {
+      await withRetry(
+        () => createTask({
+          title: `New reseller submission: ${legalCompanyName}`,
+          message: `Reseller ${legalCompanyName} (EIN: ${ein}) has submitted the onboarding form. W-9 attached. Please confirm banking details.`,
+          assigneeEmployeeId: process.env.NETSUITE_FINANCE_EMPLOYEE_ID,
+          relatedVendorId: netsuiteVendorId,
+        }),
+        "NetSuite createTask(finance)"
+      );
+    }
   } else {
     console.warn("[worker] NETSUITE_ACCOUNT_ID not set — skipping NetSuite steps");
   }
@@ -198,16 +200,18 @@ async function handleNdaCompleted(payload) {
       "NetSuite updateVendorStatus(NDA Complete)"
     );
 
-    // 6. Create NetSuite Task for Legal to countersign / confirm
-    await withRetry(
-      () => createTask({
-        title: `NDA signed by reseller: ${legalCompanyName}`,
-        message: `${contactFirstName} ${contactLastName} has signed the NDA for ${legalCompanyName}. Please countersign in DocuSign (envelope: ${envelopeId}) and confirm completion.`,
-        assigneeEmployeeId: process.env.NETSUITE_LEGAL_EMPLOYEE_ID,
-        relatedVendorId: reseller.netsuite_vendor_id,
-      }),
-      "NetSuite createTask(legal)"
-    );
+    // 6. Create NetSuite Task for Legal (optional)
+    if (process.env.NETSUITE_LEGAL_EMPLOYEE_ID) {
+      await withRetry(
+        () => createTask({
+          title: `NDA signed by reseller: ${legalCompanyName}`,
+          message: `${contactFirstName} ${contactLastName} has signed the NDA for ${legalCompanyName}. Please countersign in DocuSign (envelope: ${envelopeId}) and confirm completion.`,
+          assigneeEmployeeId: process.env.NETSUITE_LEGAL_EMPLOYEE_ID,
+          relatedVendorId: reseller.netsuite_vendor_id,
+        }),
+        "NetSuite createTask(legal)"
+      );
+    }
   }
 
   // 7. Generate authorization letter
