@@ -171,6 +171,7 @@ router.post("/", upload.fields([{ name: "w9", maxCount: 1 }, { name: "bankLetter
       contactLastName,
       ein,
       w9Key,
+      bankLetterKey,
     });
 
     // Respond 202 immediately — downstream processing is async

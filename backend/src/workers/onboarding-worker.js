@@ -47,7 +47,7 @@ async function withRetry(fn, label) {
  * - Update DB with NS vendor ID and DS envelope ID
  */
 async function handleResellerSubmitted(payload) {
-  const { resellerId, legalCompanyName, contactEmail, contactFirstName, contactLastName, ein, w9Key } = payload;
+  const { resellerId, legalCompanyName, contactEmail, contactFirstName, contactLastName, ein, w9Key, bankLetterKey } = payload;
 
   // Fetch full reseller record from DB
   const { rows } = await pool.query("SELECT * FROM resellers WHERE id = $1", [resellerId]);
@@ -86,7 +86,21 @@ async function handleResellerSubmitted(payload) {
       "NetSuite attachW9"
     );
 
-    // 3. Create NetSuite Task for Finance
+    // 3. Attach bank letter to NetSuite vendor
+    if (bankLetterKey) {
+      const bankLetterBuffer = await withRetry(() => downloadFile(bankLetterKey), "S3 downloadFile(bankLetter)");
+      await withRetry(
+        () => attachFileToVendor({
+          netsuiteVendorId,
+          fileName: `Bank_Letter_${legalCompanyName.replace(/\s+/g, "_")}.pdf`,
+          fileBuffer: bankLetterBuffer,
+          mimeType: "application/pdf",
+        }),
+        "NetSuite attachBankLetter"
+      );
+    }
+
+    // 4. Create NetSuite Task for Finance
     await withRetry(
       () => createTask({
         title: `New reseller submission: ${legalCompanyName}`,
