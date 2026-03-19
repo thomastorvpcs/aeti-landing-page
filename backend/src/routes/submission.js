@@ -7,7 +7,7 @@ const { enqueue } = require("../services/queue");
 
 const router = express.Router();
 
-router.post("/", upload.single("w9"), async (req, res, next) => {
+router.post("/", upload.fields([{ name: "w9", maxCount: 1 }, { name: "bankLetter", maxCount: 1 }]), async (req, res, next) => {
   try {
     const {
       legalCompanyName,
@@ -70,19 +70,32 @@ router.post("/", upload.single("w9"), async (req, res, next) => {
       return res.status(422).json({ error: "Missing required fields.", fields: missing });
     }
 
-    if (!req.file) {
+    const w9FileUpload = req.files?.w9?.[0];
+    const bankLetterUpload = req.files?.bankLetter?.[0];
+
+    if (!w9FileUpload) {
       return res.status(422).json({ error: "W-9 document is required." });
+    }
+    if (!bankLetterUpload) {
+      return res.status(422).json({ error: "Bank letter is required." });
     }
 
     const resellerId = uuidv4();
-    const ext = req.file.originalname.split(".").pop();
-    const w9Key = `resellers/${resellerId}/w9.${ext}`;
+    const w9Ext = w9FileUpload.originalname.split(".").pop();
+    const w9Key = `resellers/${resellerId}/w9.${w9Ext}`;
+    const bankLetterExt = bankLetterUpload.originalname.split(".").pop();
+    const bankLetterKey = `resellers/${resellerId}/bank_letter.${bankLetterExt}`;
 
-    // Upload W-9 to S3
+    // Upload W-9 and bank letter to S3
     await uploadFile({
       key: w9Key,
-      buffer: req.file.buffer,
-      contentType: req.file.mimetype,
+      buffer: w9FileUpload.buffer,
+      contentType: w9FileUpload.mimetype,
+    });
+    await uploadFile({
+      key: bankLetterKey,
+      buffer: bankLetterUpload.buffer,
+      contentType: bankLetterUpload.mimetype,
     });
 
     // Persist to PostgreSQL
@@ -97,9 +110,9 @@ router.post("/", upload.single("w9"), async (req, res, next) => {
         contact_email, contact_phone,
         finance_contact_name, finance_contact_title, finance_contact_email, finance_contact_phone,
         bank_name, bank_address, bank_account_number, bank_aba, bank_swift,
-        w9_s3_key, status
+        w9_s3_key, bank_letter_s3_key, status
       ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33
       )
       ON CONFLICT (ein) DO UPDATE SET
         legal_company_name  = EXCLUDED.legal_company_name,
@@ -137,6 +150,7 @@ router.post("/", upload.single("w9"), async (req, res, next) => {
         bankAba.trim(),
         bankSwift?.trim() || null,
         w9Key,
+        bankLetterKey,
         "Initiated",
       ]
     );

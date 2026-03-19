@@ -42,7 +42,7 @@ const INITIAL_FORM = {
   bankSwift: "",
 };
 
-function validateStep(step, formData, w9File) {
+function validateStep(step, formData, w9File, bankLetterFile) {
   const errors = {};
 
   if (step === 1) {
@@ -81,6 +81,7 @@ function validateStep(step, formData, w9File) {
 
   if (step === 4) {
     if (!w9File) errors.w9File = "Please upload your W-9 before continuing.";
+    if (!bankLetterFile) errors.bankLetterFile = "Please upload your bank letter before continuing.";
   }
 
   return errors;
@@ -103,6 +104,7 @@ export default function OnboardingForm() {
   const [step, setStep] = useState(session?.step || 1);
   const [formData, setFormData] = useState(session?.formData || INITIAL_FORM);
   const [w9File, setW9File] = useState(null);
+  const [bankLetterFile, setBankLetterFile] = useState(null);
   const [agreed, setAgreed] = useState(false);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -122,7 +124,7 @@ export default function OnboardingForm() {
   };
 
   const handleNext = () => {
-    const errs = validateStep(step, formData, w9File);
+    const errs = validateStep(step, formData, w9File, bankLetterFile);
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
       return;
@@ -140,7 +142,7 @@ export default function OnboardingForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const stepErrors = validateStep(5, formData, w9File);
+    const stepErrors = validateStep(5, formData, w9File, bankLetterFile);
     if (!agreed) stepErrors.agreed = "You must confirm accuracy before submitting.";
     if (Object.keys(stepErrors).length > 0) {
       setErrors(stepErrors);
@@ -154,6 +156,7 @@ export default function OnboardingForm() {
       const body = new FormData();
       Object.entries(formData).forEach(([k, v]) => v && body.append(k, v));
       body.append("w9", w9File);
+      body.append("bankLetter", bankLetterFile);
 
       await axios.post("/api/submit", body, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -192,12 +195,19 @@ export default function OnboardingForm() {
               <Step3Finance data={formData} onChange={handleChange} errors={errors} />
             )}
             {step === 4 && (
-              <Step3Documents w9File={w9File} onW9Change={setW9File} errors={errors} />
+              <Step3Documents
+                w9File={w9File}
+                onW9Change={setW9File}
+                bankLetterFile={bankLetterFile}
+                onBankLetterChange={setBankLetterFile}
+                errors={errors}
+              />
             )}
             {step === 5 && (
               <Step4Review
                 formData={formData}
                 w9File={w9File}
+                bankLetterFile={bankLetterFile}
                 agreed={agreed}
                 onAgreedChange={setAgreed}
                 errors={errors}
