@@ -70,6 +70,30 @@ app.get("/debug-register-webhook", async (_req, res) => {
   }
 });
 
+// Temporary: clean up cancelled/broken reseller records
+app.get("/admin/cleanup-cancelled", async (_req, res) => {
+  try {
+    const pool = require("./db");
+    const result = await pool.query(`
+      UPDATE resellers SET status = 'Cancelled'
+      WHERE status = 'NDA Pending'
+      AND (
+        docusign_envelope_id IS NULL
+        OR id IN (
+          '9ba40eeb-240a-4c86-8963-b2cb68c6cd1b',
+          '291b78c4-0a07-4e82-9f75-fa34413d0eca',
+          '956722b3-4fd9-408e-8e06-7914e5c4e2ad',
+          '5d0f786f-31a8-4461-bc51-7587f28d43b3',
+          '8c9ef824-556c-4c7d-85b9-ffe9280c7ba9'
+        )
+      )
+    `);
+    res.json({ updated: result.rowCount });
+  } catch (err) {
+    res.json({ error: err.message });
+  }
+});
+
 // SPA fallback — all unmatched routes serve index.html
 app.get("*", (_req, res) => {
   res.sendFile(path.join(frontendDist, "index.html"));
