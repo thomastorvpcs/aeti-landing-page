@@ -66,8 +66,14 @@ function buildAuthHeader(method, url) {
 
 function nsRequest(method, path, body = null) {
   const url = `${BASE_URL}${path}`;
+  const auth = buildAuthHeader(method, url);
+  console.log("[netsuite] ACCOUNT_ID:", ACCOUNT_ID);
+  console.log("[netsuite] ACCOUNT_ID_REALM:", ACCOUNT_ID_REALM);
+  console.log("[netsuite] URL:", url);
+  console.log("[netsuite] Consumer Key (first 8):", process.env.NETSUITE_CONSUMER_KEY?.slice(0, 8));
+  console.log("[netsuite] Token ID (first 8):", process.env.NETSUITE_TOKEN_ID?.slice(0, 8));
   const headers = {
-    Authorization: buildAuthHeader(method, url),
+    Authorization: auth,
     "Content-Type": "application/json",
     Prefer: "return-minimal",
   };
