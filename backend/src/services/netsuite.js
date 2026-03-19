@@ -99,6 +99,8 @@ async function createVendor(reseller) {
     contactLastName,
   } = reseller;
 
+  console.log("[netsuite] createVendor fields:", { ein, legalCompanyName, addressStreet, addressCity, addressState, addressZip });
+
   const body = {
     externalId: ein,
     companyName: legalCompanyName,
