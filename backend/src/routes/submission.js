@@ -80,7 +80,10 @@ router.post("/", upload.fields([{ name: "w9", maxCount: 1 }, { name: "bankLetter
       return res.status(422).json({ error: "Bank letter is required." });
     }
 
-    const resellerId = uuidv4();
+    // Reuse existing ID if this EIN has already been submitted, so S3 keys stay consistent
+    const existing = await pool.query("SELECT id FROM resellers WHERE ein = $1", [ein.trim()]);
+    const resellerId = existing.rows[0]?.id || uuidv4();
+
     const w9Ext = w9FileUpload.originalname.split(".").pop();
     const w9Key = `resellers/${resellerId}/w9.${w9Ext}`;
     const bankLetterExt = bankLetterUpload.originalname.split(".").pop();
@@ -115,8 +118,10 @@ router.post("/", upload.fields([{ name: "w9", maxCount: 1 }, { name: "bankLetter
         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33
       )
       ON CONFLICT (ein) DO UPDATE SET
-        legal_company_name  = EXCLUDED.legal_company_name,
-        updated_at          = NOW()
+        legal_company_name    = EXCLUDED.legal_company_name,
+        w9_s3_key             = EXCLUDED.w9_s3_key,
+        bank_letter_s3_key    = EXCLUDED.bank_letter_s3_key,
+        updated_at            = NOW()
       RETURNING id, status`,
       [
         resellerId,
