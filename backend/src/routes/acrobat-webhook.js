@@ -48,16 +48,22 @@ router.post("/", async (req, res) => {
   // Acknowledge immediately — Acrobat Sign expects a fast 200
   res.status(200).json({ received: true });
 
-  // Ignore non-signing actions (cancellations, rejections, delegations, etc.)
+  // Only process ESIGNED actions
   if (event === "AGREEMENT_ACTION_COMPLETED" && payload.actionType !== "ESIGNED") {
     console.log(`[acrobat-webhook] Skipping non-signing action: ${payload.actionType}`);
     return;
   }
 
-  // Process when fully complete OR when the last signer (PCS Legal) has signed
+  // Agreement is fully complete when status is SIGNED (set by Acrobat Sign after last signer)
+  const agreementStatus = payload.agreement?.status;
+  console.log(`[acrobat-webhook] Agreement status: ${agreementStatus}`);
+
   const isComplete = event === "AGREEMENT_WORKFLOW_COMPLETED" ||
-    (event === "AGREEMENT_ACTION_COMPLETED" && payload.participantUserEmail === process.env.PCS_LEGAL_EMAIL);
-  if (!isComplete) return;
+    (event === "AGREEMENT_ACTION_COMPLETED" && agreementStatus === "SIGNED");
+  if (!isComplete) {
+    console.log(`[acrobat-webhook] Not complete yet, skipping.`);
+    return;
+  }
   if (!agreementId) return;
 
   try {
