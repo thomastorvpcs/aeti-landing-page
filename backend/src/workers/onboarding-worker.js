@@ -2,9 +2,9 @@ require("dotenv").config();
 
 const pool = require("../db");
 const { receive, ack, enqueue } = require("../services/queue");
-const { uploadFile, downloadFile } = require("../services/s3");
+const { uploadFile, downloadFile } = require("../services/s3"); // downloadFile used in handleNdaCompleted
 const { sendNdaAgreement, downloadSignedNda, getAgreementStatus } = require("../services/acrobat-sign");
-const { createVendor, updateVendorStatus, attachFileToVendor, createTask } = require("../services/netsuite");
+const { createVendor, updateVendorStatus, createTask } = require("../services/netsuite");
 const { sendWelcomeEmail, sendInternalAlert } = require("../services/sendgrid");
 const { generateAuthorizationLetter } = require("../services/pdf");
 
@@ -47,7 +47,7 @@ async function withRetry(fn, label) {
  * - Update DB with NS vendor ID and DS envelope ID
  */
 async function handleResellerSubmitted(payload) {
-  const { resellerId, legalCompanyName, contactEmail, contactFirstName, contactLastName, ein, w9Key, bankLetterKey } = payload;
+  const { resellerId, legalCompanyName, contactEmail, contactFirstName, contactLastName, ein } = payload;
 
   // Fetch full reseller record from DB
   const { rows } = await pool.query("SELECT * FROM resellers WHERE id = $1", [resellerId]);
@@ -74,31 +74,7 @@ async function handleResellerSubmitted(payload) {
       "NetSuite createVendor"
     );
 
-    // 2. Attach W-9 to NetSuite vendor
-    const w9Buffer = await withRetry(() => downloadFile(w9Key), "S3 downloadFile(w9)");
-    await withRetry(
-      () => attachFileToVendor({
-        netsuiteVendorId,
-        fileName: `W9_${legalCompanyName.replace(/\s+/g, "_")}.pdf`,
-        fileBuffer: w9Buffer,
-        mimeType: "application/pdf",
-      }),
-      "NetSuite attachW9"
-    );
-
-    // 3. Attach bank letter to NetSuite vendor
-    if (bankLetterKey) {
-      const bankLetterBuffer = await withRetry(() => downloadFile(bankLetterKey), "S3 downloadFile(bankLetter)");
-      await withRetry(
-        () => attachFileToVendor({
-          netsuiteVendorId,
-          fileName: `Bank_Letter_${legalCompanyName.replace(/\s+/g, "_")}.pdf`,
-          fileBuffer: bankLetterBuffer,
-          mimeType: "application/pdf",
-        }),
-        "NetSuite attachBankLetter"
-      );
-    }
+    // 2 & 3. File attachment to NetSuite skipped — files are in S3
 
     // 4. Create NetSuite Task for Finance (optional)
     if (process.env.NETSUITE_FINANCE_EMPLOYEE_ID) {
@@ -182,18 +158,9 @@ async function handleNdaCompleted(payload) {
     [ndaKey, resellerId]
   );
 
-  // 4. Attach signed NDA to NetSuite vendor
-  if (reseller.netsuite_vendor_id) {
-    await withRetry(
-      () => attachFileToVendor({
-        netsuiteVendorId: reseller.netsuite_vendor_id,
-        fileName: `Signed_NDA_${legalCompanyName.replace(/\s+/g, "_")}.pdf`,
-        fileBuffer: signedNdaPdf,
-        mimeType: "application/pdf",
-      }),
-      "NetSuite attachSignedNda"
-    );
+  // 4. File attachment to NetSuite skipped — files are in S3
 
+  if (reseller.netsuite_vendor_id) {
     // 5. Update NetSuite vendor status
     await withRetry(
       () => updateVendorStatus(reseller.netsuite_vendor_id, "NDA Complete"),
