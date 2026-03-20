@@ -6,7 +6,7 @@ const { uploadFile, downloadFile } = require("../services/s3"); // downloadFile 
 const { sendNdaAgreement, downloadSignedNda, getAgreementStatus } = require("../services/acrobat-sign");
 const { createVendor, updateVendorStatus, createTask } = require("../services/netsuite");
 const { sendWelcomeEmail, sendInternalAlert } = require("../services/sendgrid");
-const { generateAuthorizationLetter } = require("../services/pdf");
+const { generateAuthorizationLetter, generateVendorSetupForm } = require("../services/pdf");
 
 const MAX_RETRIES = 5;
 const RETRY_BASE_MS = 2000; // exponential backoff base
@@ -75,6 +75,18 @@ async function handleResellerSubmitted(payload) {
     );
 
     // 2 & 3. File attachment to NetSuite skipped — files are in S3
+
+    // 2. Generate and upload vendor setup form PDF to S3
+    const vendorFormPdf = await withRetry(
+      () => generateVendorSetupForm(reseller),
+      "generateVendorSetupForm"
+    );
+    const vendorFormKey = `resellers/${resellerId}/vendor_setup_form.pdf`;
+    await withRetry(
+      () => uploadFile({ key: vendorFormKey, buffer: vendorFormPdf, contentType: "application/pdf" }),
+      "S3 uploadFile(vendorSetupForm)"
+    );
+    console.log(`[worker] Vendor setup form uploaded to S3: ${vendorFormKey}`);
 
     // 4. Create NetSuite Task for Finance (optional)
     if (process.env.NETSUITE_FINANCE_EMPLOYEE_ID) {
