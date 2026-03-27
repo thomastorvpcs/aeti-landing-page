@@ -1,5 +1,9 @@
 # AETI Landing Page — Project Overview
 
+## Git Workflow
+
+After completing any code change, always commit and push automatically without waiting to be asked. Use a concise, descriptive commit message.
+
 ## Tech Stack
 
 ### Frontend
