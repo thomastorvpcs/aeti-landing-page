@@ -161,17 +161,6 @@ export default function PrivacyPolicy() {
     <div className="min-h-screen bg-brand-light py-20">
       <div className="section-container">
         <div className="mx-auto max-w-3xl">
-          {/* Back link */}
-          <a
-            href="/"
-            className="inline-flex items-center gap-1.5 text-sm text-brand-blue hover:underline mb-8"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back to application
-          </a>
-
           <div className="rounded-2xl bg-white shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
             {/* Header */}
             <div className="bg-brand-navy px-8 py-8">
