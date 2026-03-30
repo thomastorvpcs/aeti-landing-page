@@ -176,13 +176,13 @@ export default function ApplicationIntro({ onStart }) {
                   {item.description}
                 </p>
                 {item.number === "1" && (
-                  <div className="mt-3 w-48 rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-                    <img src={ndaPreview} alt="NDA draft preview" className="w-full h-auto block" />
+                  <div className="mt-3 w-48 h-64 rounded-lg border border-gray-200 shadow-sm overflow-hidden bg-white flex items-center justify-center">
+                    <img src={ndaPreview} alt="NDA draft preview" className="w-full h-full object-contain block" />
                   </div>
                 )}
                 {item.number === "2" && (
-                  <div className="mt-3 w-48 rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-                    <img src={resellerPreview} alt="Reseller letter preview" className="w-full h-auto block" />
+                  <div className="mt-3 w-48 h-64 rounded-lg border border-gray-200 shadow-sm overflow-hidden bg-white flex items-center justify-center">
+                    <img src={resellerPreview} alt="Reseller letter preview" className="w-full h-full object-contain block" />
                   </div>
                 )}
               </div>
