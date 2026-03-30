@@ -28,6 +28,37 @@ const FORM_STEPS = [
   },
 ];
 
+const AFTER_SUBMISSION = [
+  {
+    number: "1",
+    title: "Sign the NDA",
+    duration: "Within 15 min",
+    description:
+      "You'll receive a DocuSign email shortly after submitting. Review and sign the mutual NDA electronically — takes about 2 minutes.",
+  },
+  {
+    number: "2",
+    title: "PCS Legal countersigns",
+    duration: "≤ 2 business days",
+    description:
+      "PCS Legal countersigns the NDA and sends you the Apple Business Trade-In authorization letter along with your signed copy.",
+  },
+  {
+    number: "3",
+    title: "Finance & banking verification",
+    duration: "1–2 business days",
+    description:
+      "Our finance team reaches out to confirm banking details and sends a $1 test payment to verify the ACH / wire channel.",
+  },
+  {
+    number: "4",
+    title: "Activate & start selling",
+    duration: "Same day",
+    description:
+      "Receive your partner portal credentials, complete onboarding training, and access all reseller resources.",
+  },
+];
+
 const REQUIRED_DOCS = [
   {
     name: "IRS Form W-9",
@@ -115,6 +146,37 @@ export default function ApplicationIntro({ onStart }) {
             </li>
           ))}
         </ul>
+      </div>
+
+      {/* After submission */}
+      <div className="rounded-2xl bg-white shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden mb-8">
+        <div className="bg-brand-navy px-6 py-4 flex items-center gap-3">
+          <svg className="w-5 h-5 text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <h2 className="text-base font-semibold text-white">What happens after you submit</h2>
+        </div>
+
+        <ol className="divide-y divide-gray-100">
+          {AFTER_SUBMISSION.map((item) => (
+            <li key={item.number} className="flex items-start gap-4 px-6 py-4">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-blue/10 text-sm font-bold text-brand-blue mt-0.5">
+                {item.number}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <p className="text-sm font-semibold text-gray-900">{item.title}</p>
+                  <span className="inline-block rounded-full bg-green-50 border border-green-200 px-2.5 py-0.5 text-xs font-medium text-green-700">
+                    {item.duration}
+                  </span>
+                </div>
+                <p className="mt-0.5 text-sm text-gray-500 leading-relaxed">
+                  {item.description}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ol>
       </div>
 
       {/* CTA */}
