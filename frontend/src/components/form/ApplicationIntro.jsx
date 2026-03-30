@@ -179,14 +179,14 @@ export default function ApplicationIntro({ onStart }) {
                   <img
                     src={ndaPreview}
                     alt="NDA draft preview"
-                    className="mt-3 w-40 h-52 object-contain rounded-lg border border-gray-200 shadow-sm"
+                    className="mt-3 w-48 h-auto rounded-lg border border-gray-200 shadow-sm"
                   />
                 )}
                 {item.number === "2" && (
                   <img
                     src={resellerPreview}
                     alt="Reseller letter preview"
-                    className="mt-3 w-40 h-52 object-contain rounded-lg border border-gray-200 shadow-sm"
+                    className="mt-3 w-48 h-auto rounded-lg border border-gray-200 shadow-sm"
                   />
                 )}
               </div>
