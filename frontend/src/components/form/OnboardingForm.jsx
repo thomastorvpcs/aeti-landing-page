@@ -7,6 +7,7 @@ import Step3Finance from "./Step3Finance";
 import Step3Documents from "./Step3Documents";
 import Step4Review from "./Step4Review";
 import Confirmation from "./Confirmation";
+import { saveFile, loadFile, clearFiles } from "../../utils/fileStorage";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -105,6 +106,12 @@ export default function OnboardingForm() {
   const [formData, setFormData] = useState(session?.formData || INITIAL_FORM);
   const [w9File, setW9File] = useState(null);
   const [bankLetterFile, setBankLetterFile] = useState(null);
+
+  // Load persisted files from IndexedDB on mount
+  useEffect(() => {
+    loadFile("w9").then((f) => { if (f) setW9File(f); }).catch(() => {});
+    loadFile("bankLetter").then((f) => { if (f) setBankLetterFile(f); }).catch(() => {});
+  }, []);
   const [agreed, setAgreed] = useState(false);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -117,6 +124,16 @@ export default function OnboardingForm() {
       sessionStorage.setItem(SESSION_KEY, JSON.stringify({ step, formData }));
     } catch {}
   }, [step, formData]);
+
+  const handleW9Change = (file) => {
+    setW9File(file);
+    if (file) saveFile("w9", file).catch(() => {});
+  };
+
+  const handleBankLetterChange = (file) => {
+    setBankLetterFile(file);
+    if (file) saveFile("bankLetter", file).catch(() => {});
+  };
 
   const handleChange = (name, value) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -164,6 +181,7 @@ export default function OnboardingForm() {
 
       sessionStorage.removeItem(SESSION_KEY);
       sessionStorage.removeItem("aeti_started");
+      clearFiles().catch(() => {});
       setSubmitted(true);
     } catch (err) {
       const msg =
@@ -198,9 +216,9 @@ export default function OnboardingForm() {
             {step === 4 && (
               <Step3Documents
                 w9File={w9File}
-                onW9Change={setW9File}
+                onW9Change={handleW9Change}
                 bankLetterFile={bankLetterFile}
-                onBankLetterChange={setBankLetterFile}
+                onBankLetterChange={handleBankLetterChange}
                 errors={errors}
               />
             )}
