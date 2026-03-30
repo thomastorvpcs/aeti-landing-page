@@ -1,4 +1,6 @@
 import React from "react";
+import ndaPreview from "../../assets/MNDAdraft.png";
+import resellerPreview from "../../assets/ResellerDraft.png";
 
 const FORM_STEPS = [
   {
@@ -173,6 +175,20 @@ export default function ApplicationIntro({ onStart }) {
                 <p className="mt-0.5 text-sm text-gray-500 leading-relaxed">
                   {item.description}
                 </p>
+                {item.number === "1" && (
+                  <img
+                    src={ndaPreview}
+                    alt="NDA draft preview"
+                    className="mt-3 w-40 rounded-lg border border-gray-200 shadow-sm"
+                  />
+                )}
+                {item.number === "2" && (
+                  <img
+                    src={resellerPreview}
+                    alt="Reseller letter preview"
+                    className="mt-3 w-40 rounded-lg border border-gray-200 shadow-sm"
+                  />
+                )}
               </div>
             </li>
           ))}
