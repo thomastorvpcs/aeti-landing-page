@@ -163,6 +163,7 @@ export default function OnboardingForm() {
       });
 
       sessionStorage.removeItem(SESSION_KEY);
+      sessionStorage.removeItem("aeti_started");
       setSubmitted(true);
     } catch (err) {
       const msg =
