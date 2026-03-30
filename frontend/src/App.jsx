@@ -1,9 +1,14 @@
 import React, { useState } from "react";
 import OnboardingForm from "./components/form/OnboardingForm";
 import ApplicationIntro from "./components/form/ApplicationIntro";
+import PrivacyPolicy from "./components/legal/PrivacyPolicy";
+
+const isPrivacyPage = window.location.pathname === "/privacy-policy";
 
 export default function App() {
   const [started, setStarted] = useState(() => sessionStorage.getItem("aeti_started") === "true");
+
+  if (isPrivacyPage) return <PrivacyPolicy />;
 
   return (
     <div className="min-h-screen bg-brand-light py-20">

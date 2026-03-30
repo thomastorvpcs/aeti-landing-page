@@ -54,8 +54,6 @@ export default function Footer() {
           <span>pcsww.com/aeti</span>
           <a
             href="/privacy-policy"
-            target="_blank"
-            rel="noopener noreferrer"
             className="hover:text-white transition"
           >
             Privacy Policy
