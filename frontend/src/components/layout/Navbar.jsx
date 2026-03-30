@@ -36,7 +36,7 @@ export default function Navbar({ onApplyClick }) {
                   scrolled ? "text-gray-500" : "text-blue-200"
                 }`}
               >
-                AETI Program
+                Apple Business Trade-In
               </span>
             </div>
           </div>

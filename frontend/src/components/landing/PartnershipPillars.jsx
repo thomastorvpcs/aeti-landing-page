@@ -5,7 +5,7 @@ const pillars = [
     number: "01",
     title: "Dedicated support",
     description:
-      "Every AETI partner is assigned a named Partner Success Manager who owns your relationship. One call, one person, no ticket queue.",
+      "Every Apple Business Trade-In partner is assigned a named Partner Success Manager who owns your relationship. One call, one person, no ticket queue.",
     icon: (
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192L5.636 18.364M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
@@ -50,7 +50,7 @@ const pillars = [
     number: "05",
     title: "Early product access",
     description:
-      "AETI partners join our beta program and shape roadmap decisions — you sell what's coming before your competitors know it exists.",
+      "Apple Business Trade-In partners join our beta program and shape roadmap decisions — you sell what's coming before your competitors know it exists.",
     icon: (
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />

@@ -22,7 +22,7 @@ export default function Footer() {
           {/* Program */}
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-wider text-white mb-4">
-              AETI Program
+              Apple Business Trade-In
             </h3>
             <ul className="space-y-2 text-sm">
               <li><a href="#revenue" className="hover:text-white transition">Revenue opportunity</a></li>

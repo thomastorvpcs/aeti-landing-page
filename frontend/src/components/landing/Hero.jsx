@@ -29,7 +29,7 @@ export default function Hero({ onApplyClick, onLearnClick }) {
           {/* Headline */}
           <h1 className="text-4xl font-extrabold text-white sm:text-5xl lg:text-6xl leading-tight">
             Build a recurring revenue stream with the{" "}
-            <span className="text-brand-blue">AETI Reseller Program</span>
+            <span className="text-brand-blue">Apple Business Trade-In</span>
           </h1>
 
           {/* Sub-copy */}

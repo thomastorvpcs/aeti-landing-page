@@ -12,7 +12,7 @@ const NEXT_STEPS = [
     step: 2,
     title: "Receive the program letter",
     description:
-      "Once the NDA is countersigned by PCS Legal, you'll receive the full AETI Reseller Program letter and your signed NDA by email.",
+      "Once the NDA is countersigned by PCS Legal, you'll receive the full Apple Business Trade-In authorization letter and your signed NDA by email.",
   },
   {
     step: 3,
