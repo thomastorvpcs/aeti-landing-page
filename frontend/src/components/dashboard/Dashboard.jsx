@@ -30,6 +30,22 @@ function formatDateTime(iso) {
 }
 
 function DetailModal({ reseller, onClose }) {
+  const [files, setFiles] = useState(null);
+  const [filesLoading, setFilesLoading] = useState(false);
+
+  useEffect(() => {
+    if (!reseller) return;
+    setFiles(null);
+    setFilesLoading(true);
+    const secret = sessionStorage.getItem("dashboard_secret") || "";
+    axios.get(`/api/dashboard/resellers/${reseller.id}/files`, {
+      headers: secret ? { "x-dashboard-secret": secret } : {},
+    })
+      .then(({ data }) => setFiles(data))
+      .catch(() => setFiles({}))
+      .finally(() => setFilesLoading(false));
+  }, [reseller?.id]);
+
   if (!reseller) return null;
 
   function row(label, value) {
@@ -120,6 +136,41 @@ function DetailModal({ reseller, onClose }) {
               {row("Created", formatDateTime(reseller.created_at))}
               {row("Last updated", formatDateTime(reseller.updated_at))}
             </dl>
+          </section>
+
+          {/* Documents */}
+          <section>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Documents</h3>
+            {filesLoading ? (
+              <p className="text-xs text-gray-400">Loading…</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { label: "W-9", url: files?.w9 },
+                  { label: "Bank letter", url: files?.bankLetter },
+                  { label: "Vendor setup form", url: files?.vendorForm },
+                ].map(({ label, url }) =>
+                  url ? (
+                    <a
+                      key={label}
+                      href={url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-brand-light hover:border-brand-blue hover:text-brand-blue transition-colors"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      {label}
+                    </a>
+                  ) : (
+                    <span key={label} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-xs text-gray-300">
+                      {label}
+                    </span>
+                  )
+                )}
+              </div>
+            )}
           </section>
         </div>
       </div>
