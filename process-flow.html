@@ -218,16 +218,16 @@
   <div class="section-body">
     <div class="mermaid">
 flowchart LR
-    A([Reseller\nBrowser]) -->|"POST /api/submit\nmultipart/form-data"| B[Express API\n/api/submit]
-    B -->|"Rate limit check\n5 req/hr per IP"| B
-    B -->|Validate required fields| B
-    B -->|"Stream W-9 + Bank Letter\nvia multer-s3"| C[(AWS S3\nresellers/{id}/)]
-    B -->|"INSERT / UPSERT\nresellers table\nstatus: Initiated"| D[(PostgreSQL)]
-    B -->|"Enqueue\nRESELLER_SUBMITTED"| E[(AWS SQS)]
-    B -->|"202 Accepted\nresellerId"| A
+    A([Reseller Browser]) -->|"POST /api/submit\nmultipart/form-data"| B[Express API]
+    B -->|"Rate limit + field validation\n5 req/hr per IP"| V[Validation OK]
+    V -->|"Stream W-9 + Bank Letter\nvia multer-s3"| C[(AWS S3)]
+    V -->|"INSERT / UPSERT resellers\nstatus: Initiated"| D[(PostgreSQL)]
+    V -->|"Enqueue RESELLER_SUBMITTED"| E[(AWS SQS)]
+    V -->|"202 Accepted"| A
 
     style A fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
     style B fill:#ede9fe,stroke:#8b5cf6,color:#3b0764
+    style V fill:#ede9fe,stroke:#8b5cf6,color:#3b0764
     style C fill:#d1fae5,stroke:#10b981,color:#064e3b
     style D fill:#f1f5f9,stroke:#64748b,color:#1e293b
     style E fill:#d1fae5,stroke:#10b981,color:#064e3b
@@ -248,24 +248,18 @@ flowchart LR
   <div class="section-body">
     <div class="mermaid">
 flowchart TD
-    SQS[(AWS SQS)] -->|"Poll / dequeue\nRESELLER_SUBMITTED"| W[Worker Process]
-    W -->|"SELECT * FROM resellers\nWHERE id = $1"| DB[(PostgreSQL)]
-
-    W -->|"createVendor\nOAuth 1.0a / HMAC-SHA256"| NS[NetSuite\nREST API]
+    SQS[(AWS SQS)] -->|"Dequeue RESELLER_SUBMITTED"| W[Worker Process]
+    W -->|"Read reseller record"| DB[(PostgreSQL)]
+    W -->|"createVendor\nOAuth 1.0a / HMAC-SHA256"| NS[NetSuite REST API]
     NS -->|netsuiteVendorId| W
-
-    W -->|"generateVendorSetupForm\nPDFKit"| PDF[PDF Generator\nPDFKit / Carbone]
+    W -->|"generateVendorSetupForm"| PDF[PDF Generator]
     PDF -->|vendor_setup_form.pdf| W
-    W -->|"Upload vendor_setup_form.pdf\nresellers/{id}/"| S3[(AWS S3)]
-
-    W -->|"createTask — Finance\nOAuth 1.0a"| NS
-
+    W -->|"Upload vendor_setup_form.pdf"| S3[(AWS S3)]
+    W -->|"createTask — Finance"| NS
     W -->|"sendNdaAgreement\nOAuth 2.0 refresh token"| AS[Acrobat Sign]
-    AS -->|envelopeId / agreementId| W
-
-    W -->|"UPDATE resellers SET\nnetsuite_vendor_id, envelope_id\nstatus: NDA Pending"| DB
-
-    W -->|"sendInternalAlert\nAPI key"| SG[SendGrid]
+    AS -->|agreementId| W
+    W -->|"UPDATE vendor ID, envelope ID\nstatus: NDA Pending"| DB
+    W -->|"sendInternalAlert"| SG[SendGrid]
     W -->|"ack message"| SQS
 
     style SQS fill:#d1fae5,stroke:#10b981,color:#064e3b
@@ -293,16 +287,16 @@ flowchart TD
   <div class="section-body">
     <div class="mermaid">
 flowchart TD
-    AS[Acrobat Sign] -->|"Webhook POST\n/acrobat/webhook\nAGREEMENT_WORKFLOW_COMPLETED"| API[Express API\nacrobat-webhook]
-    API -->|"200 OK\nimmediate ack"| AS
-    API -->|"SELECT reseller\nWHERE envelope_id = $1"| DB[(PostgreSQL)]
-    API -->|"UPDATE status\nNDA Complete"| DB
+    AS[Acrobat Sign] -->|"Webhook POST /acrobat/webhook\nAGREEMENT_WORKFLOW_COMPLETED"| API[Express API acrobat-webhook]
+    API -->|"200 OK immediate ack"| AS
+    API -->|"Lookup reseller by envelope ID"| DB[(PostgreSQL)]
+    API -->|"UPDATE status to NDA Complete"| DB
     API -->|"Enqueue NDA_COMPLETED"| SQS[(AWS SQS)]
 
-    POLL[Worker Polling\nevery 5 minutes] -->|"SELECT NDA Pending\nresellers"| DB
-    POLL -->|"getAgreementStatus\nper reseller"| AS2[Acrobat Sign]
-    AS2 -->|"SIGNED / CANCELLED"| POLL
-    POLL -->|"If SIGNED:\nUPDATE status + enqueue"| DB
+    POLL[Worker Polling every 5 min] -->|"Query NDA Pending resellers"| DB
+    POLL -->|"getAgreementStatus per reseller"| AS2[Acrobat Sign]
+    AS2 -->|"SIGNED or CANCELLED"| POLL
+    POLL -->|"If SIGNED: UPDATE status"| DB
     POLL -->|"Enqueue NDA_COMPLETED"| SQS
 
     style AS fill:#fee2e2,stroke:#ef4444,color:#450a0a
@@ -328,24 +322,18 @@ flowchart TD
   <div class="section-body">
     <div class="mermaid">
 flowchart TD
-    SQS[(AWS SQS)] -->|"Poll / dequeue\nNDA_COMPLETED"| W[Worker Process]
-    W -->|"SELECT * FROM resellers\nWHERE id = $1"| DB[(PostgreSQL)]
-
-    W -->|"downloadSignedNda\nenvelopeId"| AS[Acrobat Sign]
-    AS -->|signed_nda.pdf buffer| W
-
-    W -->|"Upload signed_nda.pdf\nresellers/{id}/\nAES-256 SSE"| S3[(AWS S3)]
+    SQS[(AWS SQS)] -->|"Dequeue NDA_COMPLETED"| W[Worker Process]
+    W -->|"Read reseller record"| DB[(PostgreSQL)]
+    W -->|"downloadSignedNda by envelopeId"| AS[Acrobat Sign]
+    AS -->|signed_nda.pdf| W
+    W -->|"Upload signed_nda.pdf\nAES-256 SSE"| S3[(AWS S3)]
     W -->|"UPDATE signed_nda_s3_key"| DB
-
-    W -->|"updateVendorStatus\nNDA Complete"| NS[NetSuite\nREST API]
+    W -->|"updateVendorStatus to NDA Complete"| NS[NetSuite REST API]
     W -->|"createTask — Legal"| NS
-
-    W -->|"generateAuthorizationLetter\nPDFKit"| PDF[PDF Generator\nPDFKit / Carbone]
-    PDF -->|auth_letter.pdf buffer| W
-
-    W -->|"sendWelcomeEmail\nsigned NDA + auth letter\nas attachments"| SG[SendGrid]
-    SG -->|Welcome email| RES([Reseller])
-
+    W -->|"generateAuthorizationLetter"| PDF[PDF Generator]
+    PDF -->|auth_letter.pdf| W
+    W -->|"sendWelcomeEmail\nwith signed NDA + auth letter"| SG[SendGrid]
+    SG -->|"Welcome email to reseller"| RES([Reseller])
     W -->|"ack message"| SQS
 
     style SQS fill:#d1fae5,stroke:#10b981,color:#064e3b
