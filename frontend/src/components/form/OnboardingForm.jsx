@@ -32,6 +32,12 @@ const INITIAL_FORM = {
   contactTitle: "",
   contactEmail: "",
   contactPhone: "",
+  ndaSignerSameAsContact: true,
+  ndaSignerFirstName: "",
+  ndaSignerLastName: "",
+  ndaSignerTitle: "",
+  ndaSignerEmail: "",
+  ndaSignerPhone: "",
   financeContactName: "",
   financeContactTitle: "",
   financeContactEmail: "",
@@ -64,6 +70,16 @@ function validateStep(step, formData, w9File, bankLetterFile) {
       errors.contactEmail = "Email is required.";
     } else if (!EMAIL_REGEX.test(formData.contactEmail)) {
       errors.contactEmail = "Enter a valid email address.";
+    }
+    if (!formData.ndaSignerSameAsContact) {
+      if (!formData.ndaSignerFirstName.trim()) errors.ndaSignerFirstName = "First name is required.";
+      if (!formData.ndaSignerLastName.trim()) errors.ndaSignerLastName = "Last name is required.";
+      if (!formData.ndaSignerPhone.trim()) errors.ndaSignerPhone = "Phone number is required.";
+      if (!formData.ndaSignerEmail.trim()) {
+        errors.ndaSignerEmail = "Email is required.";
+      } else if (!EMAIL_REGEX.test(formData.ndaSignerEmail)) {
+        errors.ndaSignerEmail = "Enter a valid email address.";
+      }
     }
   }
 

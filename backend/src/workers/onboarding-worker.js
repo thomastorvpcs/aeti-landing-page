@@ -47,7 +47,8 @@ async function withRetry(fn, label) {
  * - Update DB with NS vendor ID and DS envelope ID
  */
 async function handleResellerSubmitted(payload) {
-  const { resellerId, legalCompanyName, contactEmail, contactFirstName, contactLastName, ein } = payload;
+  const { resellerId, legalCompanyName, contactEmail, contactFirstName, contactLastName, ein,
+          ndaSignerFirstName, ndaSignerLastName, ndaSignerEmail } = payload;
 
   // Fetch full reseller record from DB
   const { rows } = await pool.query("SELECT * FROM resellers WHERE id = $1", [resellerId]);
@@ -104,14 +105,14 @@ async function handleResellerSubmitted(payload) {
     console.warn("[worker] NETSUITE_ACCOUNT_ID not set — skipping NetSuite steps");
   }
 
-  // 4. Send Acrobat Sign NDA
+  // 4. Send Acrobat Sign NDA — use dedicated NDA signer if provided, else fall back to commercial contact
   const envelopeId = await withRetry(
     () => sendNdaAgreement({
       resellerId,
       legalCompanyName,
-      contactEmail,
-      contactFirstName,
-      contactLastName,
+      contactEmail: ndaSignerEmail || contactEmail,
+      contactFirstName: ndaSignerFirstName || contactFirstName,
+      contactLastName: ndaSignerLastName || contactLastName,
       addressCity: reseller.address_city,
       addressState: reseller.address_state,
     }),

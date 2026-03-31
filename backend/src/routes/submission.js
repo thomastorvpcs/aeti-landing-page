@@ -39,7 +39,21 @@ router.post("/", upload.fields([{ name: "w9", maxCount: 1 }, { name: "bankLetter
       bankAccountNumber,
       bankAba,
       bankSwift,
+      ndaSignerSameAsContact,
+      ndaSignerFirstName,
+      ndaSignerLastName,
+      ndaSignerTitle,
+      ndaSignerEmail,
+      ndaSignerPhone,
     } = req.body;
+
+    // Resolve the actual NDA signer — fall back to commercial contact when same
+    const ndaSame = ndaSignerSameAsContact === "true" || ndaSignerSameAsContact === true;
+    const resolvedNdaFirstName = ndaSame ? contactFirstName : ndaSignerFirstName;
+    const resolvedNdaLastName  = ndaSame ? contactLastName  : ndaSignerLastName;
+    const resolvedNdaEmail     = ndaSame ? contactEmail     : ndaSignerEmail;
+    const resolvedNdaPhone     = ndaSame ? contactPhone     : ndaSignerPhone;
+    const resolvedNdaTitle     = ndaSame ? (contactTitle || null) : (ndaSignerTitle || null);
 
     // Basic server-side validation
     const required = {
@@ -113,14 +127,21 @@ router.post("/", upload.fields([{ name: "w9", maxCount: 1 }, { name: "bankLetter
         contact_email, contact_phone,
         finance_contact_name, finance_contact_title, finance_contact_email, finance_contact_phone,
         bank_name, bank_address, bank_account_number, bank_aba, bank_swift,
-        w9_s3_key, bank_letter_s3_key, status
+        w9_s3_key, bank_letter_s3_key, status,
+        nda_signer_first_name, nda_signer_last_name, nda_signer_title,
+        nda_signer_email, nda_signer_phone
       ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38
       )
       ON CONFLICT (ein) DO UPDATE SET
         legal_company_name    = EXCLUDED.legal_company_name,
         w9_s3_key             = EXCLUDED.w9_s3_key,
         bank_letter_s3_key    = EXCLUDED.bank_letter_s3_key,
+        nda_signer_first_name = EXCLUDED.nda_signer_first_name,
+        nda_signer_last_name  = EXCLUDED.nda_signer_last_name,
+        nda_signer_title      = EXCLUDED.nda_signer_title,
+        nda_signer_email      = EXCLUDED.nda_signer_email,
+        nda_signer_phone      = EXCLUDED.nda_signer_phone,
         updated_at            = NOW()
       RETURNING id, status`,
       [
@@ -157,6 +178,11 @@ router.post("/", upload.fields([{ name: "w9", maxCount: 1 }, { name: "bankLetter
         w9Key,
         bankLetterKey,
         "Initiated",
+        resolvedNdaFirstName.trim(),
+        resolvedNdaLastName.trim(),
+        resolvedNdaTitle,
+        resolvedNdaEmail.trim().toLowerCase(),
+        resolvedNdaPhone.trim(),
       ]
     );
 
@@ -172,6 +198,9 @@ router.post("/", upload.fields([{ name: "w9", maxCount: 1 }, { name: "bankLetter
       ein,
       w9Key,
       bankLetterKey,
+      ndaSignerFirstName: resolvedNdaFirstName.trim(),
+      ndaSignerLastName: resolvedNdaLastName.trim(),
+      ndaSignerEmail: resolvedNdaEmail.trim().toLowerCase(),
     });
 
     // Respond 202 immediately — downstream processing is async
