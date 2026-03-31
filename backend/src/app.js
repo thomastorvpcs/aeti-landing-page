@@ -6,6 +6,7 @@ const path = require("path");
 const { globalRateLimiter, submissionRateLimiter } = require("./middleware/rate-limit");
 const submissionRouter = require("./routes/submission");
 const acrobatWebhookRouter = require("./routes/acrobat-webhook");
+const dashboardRouter = require("./routes/dashboard");
 
 const app = express();
 app.set("trust proxy", 1);
@@ -46,6 +47,7 @@ app.get("/health", (_req, res) => res.json({ status: "ok" }));
 // API routes
 app.use("/api/submit", submissionRateLimiter, submissionRouter);
 app.use("/acrobat/webhook", acrobatWebhookRouter);
+app.use("/api/dashboard", dashboardRouter);
 
 // Admin route to run all pending DB migrations
 app.get("/admin/run-migration", async (_req, res) => {
