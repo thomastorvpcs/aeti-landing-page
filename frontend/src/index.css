@@ -17,10 +17,6 @@
     box-sizing: border-box;
   }
 
-  /* Prevent mobile browsers from auto-zooming into inputs (requires font-size >= 16px) */
-  input, select, textarea {
-    font-size: 16px;
-  }
 }
 
 @layer components {
@@ -37,7 +33,7 @@
   }
 
   .form-input {
-    @apply block w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 shadow-sm transition focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/20;
+    @apply block w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-base text-gray-900 placeholder-gray-400 shadow-sm transition focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/20;
   }
 
   .form-input-error {

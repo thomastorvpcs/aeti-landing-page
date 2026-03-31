@@ -1,4 +1,9 @@
 import React, { useState } from "react";
+
+function scrollToTop() {
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+}
 import OnboardingForm from "./components/form/OnboardingForm";
 import ApplicationIntro from "./components/form/ApplicationIntro";
 import PrivacyPolicy from "./components/legal/PrivacyPolicy";
@@ -17,7 +22,7 @@ export default function App() {
           <>
             <div className="mx-auto max-w-2xl mb-6">
               <button
-                onClick={() => { sessionStorage.removeItem("aeti_started"); setStarted(false); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                onClick={() => { sessionStorage.removeItem("aeti_started"); setStarted(false); scrollToTop(); }}
                 className="inline-flex items-center gap-1.5 text-sm text-brand-blue hover:underline"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -29,7 +34,7 @@ export default function App() {
             <OnboardingForm />
           </>
         ) : (
-          <ApplicationIntro onStart={() => { sessionStorage.setItem("aeti_started", "true"); setStarted(true); window.scrollTo({ top: 0, behavior: "smooth" }); }} />
+          <ApplicationIntro onStart={() => { sessionStorage.setItem("aeti_started", "true"); setStarted(true); scrollToTop(); }} />
         )}
       </div>
     </div>
