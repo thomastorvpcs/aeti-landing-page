@@ -108,6 +108,15 @@ function generateVendorSetupForm(reseller) {
     field("Email", reseller.contact_email);
     field("Phone", reseller.contact_phone);
 
+    // NDA Signatory — only shown when different from commercial contact
+    if (reseller.nda_signer_email && reseller.nda_signer_email !== reseller.contact_email) {
+      section("NDA Signatory");
+      field("Name", `${reseller.nda_signer_first_name} ${reseller.nda_signer_last_name}`);
+      field("Title", reseller.nda_signer_title);
+      field("Email", reseller.nda_signer_email);
+      field("Phone", reseller.nda_signer_phone);
+    }
+
     // Finance Contact
     section("Finance Contact");
     field("Name", reseller.finance_contact_name);
