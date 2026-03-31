@@ -1,0 +1,2 @@
+ALTER TABLE resellers
+  ADD COLUMN IF NOT EXISTS reseller_signed_at TIMESTAMPTZ;

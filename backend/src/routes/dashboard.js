@@ -33,6 +33,7 @@ router.get("/resellers", async (_req, res, next) => {
         netsuite_vendor_id,
         docusign_envelope_id,
         status,
+        reseller_signed_at,
         signed_at,
         created_at,
         updated_at

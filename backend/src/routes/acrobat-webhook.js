@@ -94,7 +94,7 @@ router.post("/", async (req, res) => {
     } else {
       // Reseller has signed; PCS countersignature still pending
       await pool.query(
-        "UPDATE resellers SET status = $1 WHERE id = $2 AND status = 'NDA Pending'",
+        "UPDATE resellers SET status = $1, reseller_signed_at = NOW() WHERE id = $2 AND status = 'NDA Pending'",
         ["Awaiting Countersign", reseller.id]
       );
       console.log(`[acrobat-webhook] Reseller ${reseller.id} signed — awaiting PCS countersignature`);

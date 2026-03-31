@@ -58,6 +58,7 @@ app.get("/admin/run-migration", async (_req, res) => {
     const migrations = [
       "002_add_vendor_fields.sql",
       "003_add_nda_signer.sql",
+      "004_add_reseller_signed_at.sql",
     ];
     for (const file of migrations) {
       const sql = fs.readFileSync(path.join(__dirname, "db/migrations", file), "utf8");
