@@ -17,7 +17,7 @@ export default function App() {
           <>
             <div className="mx-auto max-w-2xl mb-6">
               <button
-                onClick={() => { sessionStorage.removeItem("aeti_started"); setStarted(false); }}
+                onClick={() => { sessionStorage.removeItem("aeti_started"); setStarted(false); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                 className="inline-flex items-center gap-1.5 text-sm text-brand-blue hover:underline"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -29,7 +29,7 @@ export default function App() {
             <OnboardingForm />
           </>
         ) : (
-          <ApplicationIntro onStart={() => { sessionStorage.setItem("aeti_started", "true"); setStarted(true); }} />
+          <ApplicationIntro onStart={() => { sessionStorage.setItem("aeti_started", "true"); setStarted(true); window.scrollTo({ top: 0, behavior: "smooth" }); }} />
         )}
       </div>
     </div>
