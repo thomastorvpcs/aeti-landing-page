@@ -150,12 +150,13 @@ export default function OnboardingForm() {
     }
     setErrors({});
     setStep((s) => s + 1);
-    window.scrollTo({ top: document.getElementById("apply")?.offsetTop - 80, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleBack = () => {
     setErrors({});
     setStep((s) => s - 1);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleSubmit = async (e) => {
