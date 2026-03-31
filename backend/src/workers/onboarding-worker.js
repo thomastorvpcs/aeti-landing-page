@@ -55,7 +55,19 @@ async function handleResellerSubmitted(payload) {
   if (!rows.length) throw new Error(`Reseller ${resellerId} not found`);
   const reseller = rows[0];
 
-  // 1. Create NetSuite vendor (skip if credentials not configured)
+  // 1. Generate and upload vendor setup form PDF to S3
+  const vendorFormPdf = await withRetry(
+    () => generateVendorSetupForm(reseller),
+    "generateVendorSetupForm"
+  );
+  const vendorFormKey = `resellers/${resellerId}/vendor_setup_form.pdf`;
+  await withRetry(
+    () => uploadFile({ key: vendorFormKey, buffer: vendorFormPdf, contentType: "application/pdf" }),
+    "S3 uploadFile(vendorSetupForm)"
+  );
+  console.log(`[worker] Vendor setup form uploaded to S3: ${vendorFormKey}`);
+
+  // 2. Create NetSuite vendor (skip if credentials not configured)
   let netsuiteVendorId = null;
   if (process.env.NETSUITE_ACCOUNT_ID) {
     netsuiteVendorId = await withRetry(
@@ -75,21 +87,7 @@ async function handleResellerSubmitted(payload) {
       "NetSuite createVendor"
     );
 
-    // 2 & 3. File attachment to NetSuite skipped — files are in S3
-
-    // 2. Generate and upload vendor setup form PDF to S3
-    const vendorFormPdf = await withRetry(
-      () => generateVendorSetupForm(reseller),
-      "generateVendorSetupForm"
-    );
-    const vendorFormKey = `resellers/${resellerId}/vendor_setup_form.pdf`;
-    await withRetry(
-      () => uploadFile({ key: vendorFormKey, buffer: vendorFormPdf, contentType: "application/pdf" }),
-      "S3 uploadFile(vendorSetupForm)"
-    );
-    console.log(`[worker] Vendor setup form uploaded to S3: ${vendorFormKey}`);
-
-    // 4. Create NetSuite Task for Finance (optional)
+    // 3. Create NetSuite Task for Finance (optional)
     if (process.env.NETSUITE_FINANCE_EMPLOYEE_ID) {
       await withRetry(
         () => createTask({
