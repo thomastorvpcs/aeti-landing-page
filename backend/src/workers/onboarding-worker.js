@@ -228,7 +228,7 @@ async function handleNdaCompleted(payload) {
 async function pollPendingAgreements() {
   const { rows } = await pool.query(
     `SELECT id, docusign_envelope_id, contact_email, contact_first_name, contact_last_name, legal_company_name
-     FROM resellers WHERE status = 'NDA Pending' AND docusign_envelope_id IS NOT NULL`
+     FROM resellers WHERE status IN ('NDA Pending', 'Awaiting Countersign') AND docusign_envelope_id IS NOT NULL`
   );
 
   if (rows.length === 0) return;

@@ -48,23 +48,19 @@ router.post("/", async (req, res) => {
   // Acknowledge immediately — Acrobat Sign expects a fast 200
   res.status(200).json({ received: true });
 
-  // Only process ESIGNED actions
-  if (event === "AGREEMENT_ACTION_COMPLETED" && payload.actionType !== "ESIGNED") {
-    console.log(`[acrobat-webhook] Skipping non-signing action: ${payload.actionType}`);
-    return;
-  }
-
-  // Agreement is fully complete when status is SIGNED (set by Acrobat Sign after last signer)
   const agreementStatus = payload.agreement?.status;
   console.log(`[acrobat-webhook] Agreement status: ${agreementStatus}`);
 
-  const isComplete = event === "AGREEMENT_WORKFLOW_COMPLETED" ||
-    (event === "AGREEMENT_ACTION_COMPLETED" && agreementStatus === "SIGNED");
-  if (!isComplete) {
-    console.log(`[acrobat-webhook] Not complete yet, skipping.`);
+  const isEsigned = event === "AGREEMENT_ACTION_COMPLETED" && payload.actionType === "ESIGNED";
+  const isWorkflowComplete = event === "AGREEMENT_WORKFLOW_COMPLETED";
+
+  if (!isEsigned && !isWorkflowComplete) {
+    console.log(`[acrobat-webhook] Skipping event: ${event}, actionType: ${payload.actionType}`);
     return;
   }
   if (!agreementId) return;
+
+  const isFullyComplete = isWorkflowComplete || agreementStatus === "SIGNED";
 
   try {
     const result = await pool.query(
@@ -79,21 +75,30 @@ router.post("/", async (req, res) => {
 
     const reseller = result.rows[0];
 
-    await pool.query(
-      "UPDATE resellers SET status = $1, signed_at = NOW() WHERE id = $2",
-      ["NDA Complete", reseller.id]
-    );
+    if (isFullyComplete) {
+      await pool.query(
+        "UPDATE resellers SET status = $1, signed_at = NOW() WHERE id = $2",
+        ["NDA Complete", reseller.id]
+      );
 
-    await enqueue("NDA_COMPLETED", {
-      resellerId: reseller.id,
-      envelopeId: agreementId,
-      contactEmail: reseller.contact_email,
-      contactFirstName: reseller.contact_first_name,
-      contactLastName: reseller.contact_last_name,
-      legalCompanyName: reseller.legal_company_name,
-    });
+      await enqueue("NDA_COMPLETED", {
+        resellerId: reseller.id,
+        envelopeId: agreementId,
+        contactEmail: reseller.contact_email,
+        contactFirstName: reseller.contact_first_name,
+        contactLastName: reseller.contact_last_name,
+        legalCompanyName: reseller.legal_company_name,
+      });
 
-    console.log(`[acrobat-webhook] NDA_COMPLETED enqueued for reseller ${reseller.id}`);
+      console.log(`[acrobat-webhook] NDA_COMPLETED enqueued for reseller ${reseller.id}`);
+    } else {
+      // Reseller has signed; PCS countersignature still pending
+      await pool.query(
+        "UPDATE resellers SET status = $1 WHERE id = $2 AND status = 'NDA Pending'",
+        ["Awaiting Countersign", reseller.id]
+      );
+      console.log(`[acrobat-webhook] Reseller ${reseller.id} signed — awaiting PCS countersignature`);
+    }
   } catch (err) {
     console.error("[acrobat-webhook] Processing error:", err.message);
   }
