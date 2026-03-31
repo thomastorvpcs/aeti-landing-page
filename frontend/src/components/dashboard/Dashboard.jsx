@@ -149,6 +149,7 @@ function DetailModal({ reseller, onClose }) {
                   { label: "W-9", url: files?.w9 },
                   { label: "Bank letter", url: files?.bankLetter },
                   { label: "Vendor setup form", url: files?.vendorForm },
+                  { label: "Signed NDA", url: files?.signedNda },
                 ].map(({ label, url }) =>
                   url ? (
                     <a

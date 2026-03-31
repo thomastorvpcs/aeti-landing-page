@@ -50,21 +50,22 @@ router.get("/resellers", async (_req, res, next) => {
 router.get("/resellers/:id/files", async (req, res, next) => {
   try {
     const { rows } = await pool.query(
-      "SELECT id, w9_s3_key, bank_letter_s3_key FROM resellers WHERE id = $1",
+      "SELECT id, w9_s3_key, bank_letter_s3_key, signed_nda_s3_key FROM resellers WHERE id = $1",
       [req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: "Not found" });
 
-    const { id, w9_s3_key, bank_letter_s3_key } = rows[0];
+    const { id, w9_s3_key, bank_letter_s3_key, signed_nda_s3_key } = rows[0];
     const vendorFormKey = `resellers/${id}/vendor_setup_form.pdf`;
 
-    const [w9Url, bankLetterUrl, vendorFormUrl] = await Promise.all([
+    const [w9Url, bankLetterUrl, vendorFormUrl, signedNdaUrl] = await Promise.all([
       w9_s3_key ? getPresignedUrl(w9_s3_key, 300) : null,
       bank_letter_s3_key ? getPresignedUrl(bank_letter_s3_key, 300) : null,
       getPresignedUrl(vendorFormKey, 300).catch(() => null),
+      signed_nda_s3_key ? getPresignedUrl(signed_nda_s3_key, 300) : null,
     ]);
 
-    res.json({ w9: w9Url, bankLetter: bankLetterUrl, vendorForm: vendorFormUrl });
+    res.json({ w9: w9Url, bankLetter: bankLetterUrl, vendorForm: vendorFormUrl, signedNda: signedNdaUrl });
   } catch (err) {
     next(err);
   }
