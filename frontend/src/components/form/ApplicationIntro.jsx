@@ -1,6 +1,8 @@
 import React from "react";
 import ndaPreview from "../../assets/MNDAdraft.png";
 import resellerPreview from "../../assets/ResellerDraft.png";
+import ndaPdf from "../../assets/nda-draft.pdf";
+import resellerPdf from "../../assets/reseller-letter-draft.pdf.pdf";
 
 const FORM_STEPS = [
   {
@@ -176,14 +178,24 @@ export default function ApplicationIntro({ onStart }) {
                   {item.description}
                 </p>
                 {item.number === "1" && (
-                  <div className="mt-3 w-48 h-64 rounded-lg border border-gray-200 shadow-sm overflow-hidden bg-white flex items-center justify-center">
-                    <img src={ndaPreview} alt="NDA draft preview" className="w-full h-full object-contain block" />
-                  </div>
+                  <a href={ndaPdf} download="NDA-Draft.pdf" className="mt-3 block w-48 group">
+                    <div className="w-48 h-64 rounded-lg border border-gray-200 shadow-sm overflow-hidden bg-white relative">
+                      <img src={ndaPreview} alt="NDA draft preview" className="w-full h-full object-contain block" />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 group-active:bg-black/30 transition-colors flex items-end justify-center pb-3 opacity-0 group-hover:opacity-100">
+                        <span className="text-xs font-semibold text-white bg-black/60 rounded-full px-3 py-1">Download PDF</span>
+                      </div>
+                    </div>
+                  </a>
                 )}
                 {item.number === "2" && (
-                  <div className="mt-3 w-48 h-64 rounded-lg border border-gray-200 shadow-sm overflow-hidden bg-white flex items-center justify-center">
-                    <img src={resellerPreview} alt="Reseller letter preview" className="w-full h-full object-contain block" />
-                  </div>
+                  <a href={resellerPdf} download="Reseller-Letter-Draft.pdf" className="mt-3 block w-48 group">
+                    <div className="w-48 h-64 rounded-lg border border-gray-200 shadow-sm overflow-hidden bg-white relative">
+                      <img src={resellerPreview} alt="Reseller letter preview" className="w-full h-full object-contain block" />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 group-active:bg-black/30 transition-colors flex items-end justify-center pb-3 opacity-0 group-hover:opacity-100">
+                        <span className="text-xs font-semibold text-white bg-black/60 rounded-full px-3 py-1">Download PDF</span>
+                      </div>
+                    </div>
+                  </a>
                 )}
               </div>
             </li>
