@@ -127,14 +127,22 @@ export default function OnboardingForm() {
 
   const handleW9Change = (file) => {
     setW9File(file);
-    if (file) saveFile("w9", file).catch(() => {});
-    else removeFile("w9").catch(() => {});
+    if (file) {
+      saveFile("w9", file).catch(() => {});
+      setErrors((prev) => ({ ...prev, w9File: undefined }));
+    } else {
+      removeFile("w9").catch(() => {});
+    }
   };
 
   const handleBankLetterChange = (file) => {
     setBankLetterFile(file);
-    if (file) saveFile("bankLetter", file).catch(() => {});
-    else removeFile("bankLetter").catch(() => {});
+    if (file) {
+      saveFile("bankLetter", file).catch(() => {});
+      setErrors((prev) => ({ ...prev, bankLetterFile: undefined }));
+    } else {
+      removeFile("bankLetter").catch(() => {});
+    }
   };
 
   const handleChange = (name, value) => {
