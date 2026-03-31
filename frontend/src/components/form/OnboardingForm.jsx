@@ -7,7 +7,7 @@ import Step3Finance from "./Step3Finance";
 import Step3Documents from "./Step3Documents";
 import Step4Review from "./Step4Review";
 import Confirmation from "./Confirmation";
-import { saveFile, loadFile, clearFiles } from "../../utils/fileStorage";
+import { saveFile, loadFile, removeFile, clearFiles } from "../../utils/fileStorage";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -128,11 +128,13 @@ export default function OnboardingForm() {
   const handleW9Change = (file) => {
     setW9File(file);
     if (file) saveFile("w9", file).catch(() => {});
+    else removeFile("w9").catch(() => {});
   };
 
   const handleBankLetterChange = (file) => {
     setBankLetterFile(file);
     if (file) saveFile("bankLetter", file).catch(() => {});
+    else removeFile("bankLetter").catch(() => {});
   };
 
   const handleChange = (name, value) => {
