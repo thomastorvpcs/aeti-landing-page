@@ -5,10 +5,21 @@
 @layer base {
   html {
     scroll-behavior: smooth;
+    /* Fill overscroll/bounce areas on mobile with the app background color.
+       Browsers show the html element's background when the user pulls past
+       the top or bottom of the page. */
+    background-color: #EEF4FF;
+    /* dvh fills the full dynamic viewport height on mobile (accounts for
+       collapsing browser chrome). Falls back to 100% for older browsers. */
+    min-height: 100dvh;
+    min-height: 100%;
   }
 
   body {
     @apply font-sans text-gray-900 antialiased;
+    background-color: #EEF4FF;
+    min-height: 100dvh;
+    min-height: 100%;
   }
 
   *,
