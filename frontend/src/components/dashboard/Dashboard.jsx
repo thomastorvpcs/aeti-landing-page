@@ -295,6 +295,7 @@ export default function Dashboard() {
                     <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Contact</th>
                     <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                     <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Reseller signed</th>
+                    <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">PCS countersigned</th>
                     <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Submitted</th>
                     <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">NetSuite ID</th>
                     <th className="px-5 py-3"></th>
@@ -316,6 +317,9 @@ export default function Dashboard() {
                       </td>
                       <td className="px-5 py-4 hidden md:table-cell text-gray-500 text-xs">
                         {formatDate(r.reseller_signed_at)}
+                      </td>
+                      <td className="px-5 py-4 hidden md:table-cell text-gray-500 text-xs">
+                        {formatDate(r.signed_at)}
                       </td>
                       <td className="px-5 py-4 hidden lg:table-cell text-gray-500 text-xs">
                         {formatDate(r.created_at)}
