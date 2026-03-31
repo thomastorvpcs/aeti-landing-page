@@ -16,4 +16,12 @@ const submissionRateLimiter = rateLimit({
   message: { error: "Too many form submissions from this IP. Please try again later." },
 });
 
-module.exports = { globalRateLimiter, submissionRateLimiter };
+const dashboardLoginRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many login attempts. Please try again later." },
+});
+
+module.exports = { globalRateLimiter, submissionRateLimiter, dashboardLoginRateLimiter };

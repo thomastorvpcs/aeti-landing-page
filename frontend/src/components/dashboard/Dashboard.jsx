@@ -19,9 +19,19 @@ function StatusBadge({ status }) {
   );
 }
 
+function authHeaders() {
+  const token = sessionStorage.getItem("dashboard_token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 function formatDate(iso) {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+}
+
+function formatTime(iso) {
+  if (!iso) return null;
+  return new Date(iso).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
 function formatDateTime(iso) {
@@ -37,9 +47,8 @@ function DetailModal({ reseller, onClose }) {
     if (!reseller) return;
     setFiles(null);
     setFilesLoading(true);
-    const secret = sessionStorage.getItem("dashboard_secret") || "";
     axios.get(`/api/dashboard/resellers/${reseller.id}/files`, {
-      headers: secret ? { "x-dashboard-secret": secret } : {},
+      headers: authHeaders(),
     })
       .then(({ data }) => setFiles(data))
       .catch(() => setFiles({}))
@@ -193,9 +202,8 @@ export default function Dashboard() {
     setLoading(true);
     setError(null);
     try {
-      const secret = sessionStorage.getItem("dashboard_secret") || "";
       const { data } = await axios.get("/api/dashboard/resellers", {
-        headers: secret ? { "x-dashboard-secret": secret } : {},
+        headers: authHeaders(),
       });
       setResellers(data);
     } catch (err) {
@@ -211,12 +219,34 @@ export default function Dashboard() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Secret prompt
-  const [secretInput, setSecretInput] = useState("");
-  function handleSecretSubmit(e) {
+  // Login form state
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginError, setLoginError] = useState(null);
+  const [loginLoading, setLoginLoading] = useState(false);
+
+  async function handleLogin(e) {
     e.preventDefault();
-    sessionStorage.setItem("dashboard_secret", secretInput);
-    load();
+    setLoginLoading(true);
+    setLoginError(null);
+    try {
+      const { data } = await axios.post("/api/dashboard/auth/login", {
+        email: loginEmail,
+        password: loginPassword,
+      });
+      sessionStorage.setItem("dashboard_token", data.token);
+      load();
+    } catch (err) {
+      setLoginError(err.response?.data?.error || "Login failed. Check your credentials.");
+    } finally {
+      setLoginLoading(false);
+    }
+  }
+
+  function handleLogout() {
+    sessionStorage.removeItem("dashboard_token");
+    setResellers([]);
+    setError("unauthorized");
   }
 
   const filtered = resellers.filter((r) => {
@@ -248,17 +278,29 @@ export default function Dashboard() {
             </svg>
           </div>
           <h2 className="text-lg font-bold text-brand-navy mb-1">Dashboard access</h2>
-          <p className="text-sm text-gray-500 mb-6">Enter the dashboard secret to continue.</p>
-          <form onSubmit={handleSecretSubmit} className="space-y-3">
+          <p className="text-sm text-gray-500 mb-6">Sign in with your PCS credentials.</p>
+          <form onSubmit={handleLogin} className="space-y-3 text-left">
+            <input
+              type="email"
+              value={loginEmail}
+              onChange={(e) => setLoginEmail(e.target.value)}
+              placeholder="Email address"
+              className="form-input"
+              autoFocus
+              required
+            />
             <input
               type="password"
-              value={secretInput}
-              onChange={(e) => setSecretInput(e.target.value)}
-              placeholder="Secret"
-              className="form-input text-center"
-              autoFocus
+              value={loginPassword}
+              onChange={(e) => setLoginPassword(e.target.value)}
+              placeholder="Password"
+              className="form-input"
+              required
             />
-            <button type="submit" className="btn-primary w-full">Access dashboard</button>
+            {loginError && <p className="text-sm text-red-500 text-center">{loginError}</p>}
+            <button type="submit" disabled={loginLoading} className="btn-primary w-full">
+              {loginLoading ? "Signing in…" : "Sign in"}
+            </button>
           </form>
         </div>
       </div>
@@ -274,12 +316,20 @@ export default function Dashboard() {
             <p className="text-xs font-semibold uppercase tracking-widest text-brand-blue mb-1">PCS Wireless</p>
             <h1 className="text-2xl font-bold text-brand-navy">Apple Business Trade-In — Reseller Pipeline</h1>
           </div>
-          <button onClick={load} className="btn-secondary text-sm px-4 py-2 self-start sm:self-auto">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Refresh
-          </button>
+          <div className="flex gap-2 self-start sm:self-auto">
+            <button onClick={load} className="btn-secondary text-sm px-4 py-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Refresh
+            </button>
+            <button onClick={handleLogout} className="btn-secondary text-sm px-4 py-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              Sign out
+            </button>
+          </div>
         </div>
 
         {/* Stat cards */}
@@ -369,9 +419,11 @@ export default function Dashboard() {
                       </td>
                       <td className="px-5 py-4 hidden md:table-cell text-gray-500 text-xs">
                         {formatDate(r.reseller_signed_at)}
+                        {formatTime(r.reseller_signed_at) && <p className="text-gray-400">{formatTime(r.reseller_signed_at)}</p>}
                       </td>
                       <td className="px-5 py-4 hidden md:table-cell text-gray-500 text-xs">
                         {formatDate(r.signed_at)}
+                        {formatTime(r.signed_at) && <p className="text-gray-400">{formatTime(r.signed_at)}</p>}
                       </td>
                       <td className="px-5 py-4 hidden lg:table-cell text-gray-500 text-xs">
                         {formatDate(r.created_at)}

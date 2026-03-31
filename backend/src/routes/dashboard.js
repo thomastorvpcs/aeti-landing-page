@@ -1,17 +1,11 @@
 const express = require("express");
 const pool = require("../db");
 const { getPresignedUrl } = require("../services/s3");
+const requireDashboardAuth = require("../middleware/requireDashboardAuth");
 
 const router = express.Router();
 
-// Simple token auth — set DASHBOARD_SECRET in .env
-router.use((req, res, next) => {
-  const secret = process.env.DASHBOARD_SECRET;
-  if (!secret) return next(); // no secret set → open in dev
-  const auth = req.headers["x-dashboard-secret"];
-  if (auth !== secret) return res.status(401).json({ error: "Unauthorized" });
-  next();
-});
+router.use(requireDashboardAuth);
 
 router.get("/resellers", async (_req, res, next) => {
   try {

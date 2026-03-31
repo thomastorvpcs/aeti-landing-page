@@ -7,6 +7,8 @@ const MIGRATIONS = [
   "001_initial.sql",
   "002_add_vendor_fields.sql",
   "003_add_nda_signer.sql",
+  "004_add_reseller_signed_at.sql",
+  "005_dashboard_users.sql",
 ];
 
 async function migrate() {

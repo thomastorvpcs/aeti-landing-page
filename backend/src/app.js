@@ -3,9 +3,10 @@ const express = require("express");
 const helmet = require("helmet");
 const cors = require("cors");
 const path = require("path");
-const { globalRateLimiter, submissionRateLimiter } = require("./middleware/rate-limit");
+const { globalRateLimiter, submissionRateLimiter, dashboardLoginRateLimiter } = require("./middleware/rate-limit");
 const submissionRouter = require("./routes/submission");
 const acrobatWebhookRouter = require("./routes/acrobat-webhook");
+const dashboardAuthRouter = require("./routes/dashboardAuth");
 const dashboardRouter = require("./routes/dashboard");
 
 const app = express();
@@ -47,6 +48,7 @@ app.get("/health", (_req, res) => res.json({ status: "ok" }));
 // API routes
 app.use("/api/submit", submissionRateLimiter, submissionRouter);
 app.use("/acrobat/webhook", acrobatWebhookRouter);
+app.use("/api/dashboard/auth", dashboardLoginRateLimiter, dashboardAuthRouter);
 app.use("/api/dashboard", dashboardRouter);
 
 // Admin route to run all pending DB migrations
@@ -59,6 +61,7 @@ app.get("/admin/run-migration", async (_req, res) => {
       "002_add_vendor_fields.sql",
       "003_add_nda_signer.sql",
       "004_add_reseller_signed_at.sql",
+      "005_dashboard_users.sql",
     ];
     for (const file of migrations) {
       const sql = fs.readFileSync(path.join(__dirname, "db/migrations", file), "utf8");
