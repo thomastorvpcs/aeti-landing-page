@@ -47,14 +47,20 @@ app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.use("/api/submit", submissionRateLimiter, submissionRouter);
 app.use("/acrobat/webhook", acrobatWebhookRouter);
 
-// Temporary admin route to run DB migration
+// Admin route to run all pending DB migrations
 app.get("/admin/run-migration", async (_req, res) => {
   try {
     const pool = require("./db");
     const fs = require("fs");
     const path = require("path");
-    const sql = fs.readFileSync(path.join(__dirname, "db/migrations/002_add_vendor_fields.sql"), "utf8");
-    await pool.query(sql);
+    const migrations = [
+      "002_add_vendor_fields.sql",
+      "003_add_nda_signer.sql",
+    ];
+    for (const file of migrations) {
+      const sql = fs.readFileSync(path.join(__dirname, "db/migrations", file), "utf8");
+      await pool.query(sql);
+    }
     res.json({ success: true });
   } catch (err) {
     res.json({ error: err.message });
