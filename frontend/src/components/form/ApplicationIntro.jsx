@@ -89,12 +89,6 @@ export default function ApplicationIntro({ onStart }) {
     <div className="mx-auto max-w-2xl">
       {/* Header */}
       <div className="text-center mb-10">
-        <div className="inline-flex items-center gap-2 rounded-full bg-brand-blue/10 px-4 py-1.5 mb-5">
-          <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-          <span className="text-xs font-medium tracking-wide text-brand-blue">
-            Now accepting applications
-          </span>
-        </div>
         <h1 className="text-4xl font-semibold tracking-tight text-brand-navy sm:text-5xl">
           Apple Business Trade-In
         </h1>

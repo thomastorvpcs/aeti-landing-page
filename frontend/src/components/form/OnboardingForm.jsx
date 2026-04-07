@@ -264,30 +264,33 @@ export default function OnboardingForm() {
           </div>
 
           {/* Navigation */}
-          <div className="border-t border-gray-100 bg-white px-6 py-5 sm:px-10">
-            {submitError && (
-              <p className="text-xs text-red-500 mb-3 text-center">{submitError}</p>
-            )}
-            <div className="flex items-center gap-3">
+          <div className="border-t border-gray-100 bg-white px-6 py-5 sm:px-10 flex items-center justify-between gap-4">
+            <div>
               {step > 1 && (
                 <button
                   type="button"
                   onClick={handleBack}
                   disabled={submitting}
-                  className="shrink-0 text-sm text-brand-blue hover:underline disabled:opacity-50"
+                  className="inline-flex items-center justify-center rounded-full border border-brand-blue px-5 py-2 text-sm font-medium text-brand-blue bg-transparent hover:bg-brand-blue/5 transition-colors disabled:opacity-50"
                 >
                   Back
                 </button>
               )}
+            </div>
+
+            <div className="flex flex-col items-end gap-2">
+              {submitError && (
+                <p className="text-xs text-red-600 text-right max-w-xs">{submitError}</p>
+              )}
               {step < 5 ? (
-                <button type="button" onClick={handleNext} className="btn-primary flex-1">
+                <button type="button" onClick={handleNext} className="btn-primary">
                   Continue
                 </button>
               ) : (
                 <button
                   type="submit"
                   disabled={submitting || !agreed}
-                  className="btn-primary flex-1"
+                  className="btn-primary"
                 >
                   {submitting ? (
                     <>
