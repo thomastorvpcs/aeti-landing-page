@@ -92,6 +92,130 @@ Provide the connection string for this policy to the development team — not th
 
 ---
 
+## Provisioning Script
+
+The script below creates all required resources using the Azure CLI. Run it from any terminal with the Azure CLI installed (`az login` first). Update the variables at the top to match your naming conventions before running.
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ── CONFIGURATION — update these before running ────────────────────────────
+RESOURCE_GROUP="aeti-rg"
+LOCATION="eastus"                          # change to preferred Azure region
+STORAGE_ACCOUNT="aetiresellerdocs"         # must be globally unique, lowercase, 3–24 chars
+BLOB_CONTAINER="reseller-docs"
+SERVICE_BUS_NAMESPACE="aeti-onboarding"   # must be globally unique
+SERVICE_BUS_QUEUE="onboarding-jobs"
+SERVICE_BUS_POLICY="app-send-listen"
+# ───────────────────────────────────────────────────────────────────────────
+
+echo ""
+echo "=== AETI Azure Resource Provisioning ==="
+echo ""
+
+# 1. Resource Group
+echo "Creating resource group..."
+az group create \
+  --name "$RESOURCE_GROUP" \
+  --location "$LOCATION" \
+  --output none
+
+# 2. Storage Account
+echo "Creating storage account..."
+az storage account create \
+  --name "$STORAGE_ACCOUNT" \
+  --resource-group "$RESOURCE_GROUP" \
+  --location "$LOCATION" \
+  --sku Standard_LRS \
+  --kind StorageV2 \
+  --https-only true \
+  --allow-blob-public-access false \
+  --min-tls-version TLS1_2 \
+  --output none
+
+# 3. Blob Container (private — no public access)
+echo "Creating blob container..."
+STORAGE_KEY=$(az storage account keys list \
+  --account-name "$STORAGE_ACCOUNT" \
+  --resource-group "$RESOURCE_GROUP" \
+  --query "[0].value" --output tsv)
+
+az storage container create \
+  --name "$BLOB_CONTAINER" \
+  --account-name "$STORAGE_ACCOUNT" \
+  --account-key "$STORAGE_KEY" \
+  --public-access off \
+  --output none
+
+# 4. Service Bus Namespace (Standard tier — required for dead-letter queuing)
+echo "Creating Service Bus namespace..."
+az servicebus namespace create \
+  --name "$SERVICE_BUS_NAMESPACE" \
+  --resource-group "$RESOURCE_GROUP" \
+  --location "$LOCATION" \
+  --sku Standard \
+  --output none
+
+# 5. Service Bus Queue
+#    - lock-duration PT1M  = 60s, matches current SQS visibility timeout
+#    - max-delivery-count 5 = matches current retry limit before dead-lettering
+echo "Creating Service Bus queue..."
+az servicebus queue create \
+  --name "$SERVICE_BUS_QUEUE" \
+  --namespace-name "$SERVICE_BUS_NAMESPACE" \
+  --resource-group "$RESOURCE_GROUP" \
+  --lock-duration PT1M \
+  --max-delivery-count 5 \
+  --enable-dead-lettering-on-message-expiration true \
+  --output none
+
+# 6. Shared Access Policy — Send + Listen only (no Manage)
+echo "Creating queue access policy..."
+az servicebus queue authorization-rule create \
+  --name "$SERVICE_BUS_POLICY" \
+  --queue-name "$SERVICE_BUS_QUEUE" \
+  --namespace-name "$SERVICE_BUS_NAMESPACE" \
+  --resource-group "$RESOURCE_GROUP" \
+  --rights Send Listen \
+  --output none
+
+# ── OUTPUT — connection strings for the dev team ───────────────────────────
+echo ""
+echo "=== Provisioning complete. Provide the following to the dev team: ==="
+echo ""
+
+STORAGE_CONN=$(az storage account show-connection-string \
+  --name "$STORAGE_ACCOUNT" \
+  --resource-group "$RESOURCE_GROUP" \
+  --query connectionString --output tsv)
+
+SB_CONN=$(az servicebus queue authorization-rule keys list \
+  --name "$SERVICE_BUS_POLICY" \
+  --queue-name "$SERVICE_BUS_QUEUE" \
+  --namespace-name "$SERVICE_BUS_NAMESPACE" \
+  --resource-group "$RESOURCE_GROUP" \
+  --query primaryConnectionString --output tsv)
+
+echo "AZURE_STORAGE_CONNECTION_STRING=$STORAGE_CONN"
+echo "AZURE_BLOB_CONTAINER=$BLOB_CONTAINER"
+echo "AZURE_SERVICE_BUS_CONNECTION_STRING=$SB_CONN"
+echo "AZURE_SERVICE_BUS_QUEUE_NAME=$SERVICE_BUS_QUEUE"
+echo ""
+echo "These replace the following AWS variables (which can be removed):"
+echo "  AWS_REGION"
+echo "  AWS_ACCESS_KEY_ID"
+echo "  AWS_SECRET_ACCESS_KEY"
+echo "  AWS_ENDPOINT"
+echo "  S3_BUCKET"
+echo "  SQS_QUEUE_URL"
+echo ""
+```
+
+**Prerequisites:** Azure CLI installed and logged in (`az login`). No other tools required.
+
+---
+
 ## What to Hand Back to the Dev Team
 
 Once provisioned, please provide the following values so the application configuration can be updated:
