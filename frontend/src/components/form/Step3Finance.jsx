@@ -14,7 +14,7 @@ export default function Step3Finance({ data, onChange, errors }) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold text-brand-navy">Finance &amp; banking</h2>
+        <h2 className="text-2xl font-semibold text-brand-navy">Finance &amp; banking</h2>
         <p className="text-sm text-gray-500 mt-1">
           Provide your finance contact and banking details for vendor setup.
         </p>

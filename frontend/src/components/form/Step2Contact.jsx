@@ -16,7 +16,7 @@ export default function Step2Contact({ data, onChange, errors }) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold text-brand-navy">Contact details</h2>
+        <h2 className="text-2xl font-semibold text-brand-navy">Contact details</h2>
         <p className="text-sm text-gray-500 mt-1">
           Primary commercial contact for the partnership.
         </p>

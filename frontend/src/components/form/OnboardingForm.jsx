@@ -230,7 +230,7 @@ export default function OnboardingForm() {
     <div className="mx-auto max-w-2xl">
       <ProgressIndicator currentStep={step} />
 
-      <div className="rounded-2xl bg-white border border-gray-200 overflow-hidden">
+      <div className="rounded-2xl bg-white shadow-[0_2px_16px_rgba(0,0,0,0.07)] overflow-hidden">
         <form onSubmit={handleSubmit} noValidate>
           <div className="px-6 py-8 sm:px-10">
             {step === 1 && (
@@ -264,40 +264,30 @@ export default function OnboardingForm() {
           </div>
 
           {/* Navigation */}
-          <div className="border-t border-gray-100 bg-white px-6 py-5 sm:px-10 flex items-center justify-between gap-4">
-            <div>
+          <div className="border-t border-gray-100 bg-white px-6 py-5 sm:px-10">
+            {submitError && (
+              <p className="text-xs text-red-500 mb-3 text-center">{submitError}</p>
+            )}
+            <div className="flex items-center gap-3">
               {step > 1 && (
                 <button
                   type="button"
                   onClick={handleBack}
-                  className="btn-secondary"
                   disabled={submitting}
+                  className="shrink-0 text-sm text-brand-blue hover:underline disabled:opacity-50"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
                   Back
                 </button>
               )}
-            </div>
-
-            <div className="flex flex-col items-end gap-2">
-              {submitError && (
-                <p className="text-xs text-red-600 text-right max-w-xs">{submitError}</p>
-              )}
-
               {step < 5 ? (
-                <button type="button" onClick={handleNext} className="btn-primary">
+                <button type="button" onClick={handleNext} className="btn-primary flex-1">
                   Continue
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
                 </button>
               ) : (
                 <button
                   type="submit"
                   disabled={submitting || !agreed}
-                  className="btn-primary"
+                  className="btn-primary flex-1"
                 >
                   {submitting ? (
                     <>
@@ -305,15 +295,10 @@ export default function OnboardingForm() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                       </svg>
-                      Submitting...
+                      Submitting…
                     </>
                   ) : (
-                    <>
-                      Submit application
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </>
+                    "Submit application"
                   )}
                 </button>
               )}
