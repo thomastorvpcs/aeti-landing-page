@@ -4,27 +4,22 @@ export default {
   theme: {
     extend: {
       colors: {
-        navy: {
-          50: "#f0f4ff",
-          100: "#e0eaff",
-          200: "#c0d5ff",
-          300: "#91b4ff",
-          400: "#5b8bff",
-          500: "#2d63f5",
-          600: "#1748eb",
-          700: "#1238d8",
-          800: "#152eaf",
-          900: "#0F2D5E",
-          950: "#0a1d3f",
-        },
         brand: {
-          blue: "#1E6FFF",
-          navy: "#0F2D5E",
-          light: "#EEF4FF",
+          blue: "#0071E3",   // Apple blue
+          navy: "#1D1D1F",   // Apple near-black
+          light: "#F5F5F7",  // Apple page background
         },
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
+        sans: [
+          "-apple-system",
+          "BlinkMacSystemFont",
+          '"SF Pro Display"',
+          '"SF Pro Text"',
+          '"Helvetica Neue"',
+          "Arial",
+          "sans-serif",
+        ],
       },
     },
   },

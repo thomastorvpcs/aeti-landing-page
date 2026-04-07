@@ -230,7 +230,7 @@ export default function OnboardingForm() {
     <div className="mx-auto max-w-2xl">
       <ProgressIndicator currentStep={step} />
 
-      <div className="rounded-2xl bg-white shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
+      <div className="rounded-2xl bg-white border border-gray-200 overflow-hidden">
         <form onSubmit={handleSubmit} noValidate>
           <div className="px-6 py-8 sm:px-10">
             {step === 1 && (
@@ -264,7 +264,7 @@ export default function OnboardingForm() {
           </div>
 
           {/* Navigation */}
-          <div className="border-t border-gray-100 bg-gray-50 px-6 py-5 sm:px-10 flex items-center justify-between gap-4">
+          <div className="border-t border-gray-100 bg-white px-6 py-5 sm:px-10 flex items-center justify-between gap-4">
             <div>
               {step > 1 && (
                 <button

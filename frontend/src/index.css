@@ -5,19 +5,14 @@
 @layer base {
   html {
     scroll-behavior: smooth;
-    /* Fill overscroll/bounce areas on mobile with the app background color.
-       Browsers show the html element's background when the user pulls past
-       the top or bottom of the page. */
-    background-color: #EEF4FF;
-    /* dvh fills the full dynamic viewport height on mobile (accounts for
-       collapsing browser chrome). Falls back to 100% for older browsers. */
+    background-color: #F5F5F7;
     min-height: 100dvh;
     min-height: 100%;
   }
 
   body {
-    @apply font-sans text-gray-900 antialiased;
-    background-color: #EEF4FF;
+    @apply font-sans text-[#1D1D1F] antialiased;
+    background-color: #F5F5F7;
     min-height: 100dvh;
     min-height: 100%;
   }
@@ -27,24 +22,23 @@
   *::after {
     box-sizing: border-box;
   }
-
 }
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-brand-blue px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-brand-blue focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-brand-blue px-6 py-3 text-sm font-medium text-white transition-all hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-blue/30 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg border-2 border-brand-navy px-6 py-3 text-sm font-semibold text-brand-navy transition-all hover:bg-brand-navy hover:text-white focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2;
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-gray-300 bg-white px-6 py-3 text-sm font-medium text-brand-navy transition-all hover:bg-brand-light focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2;
   }
 
   .btn-outline-white {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg border-2 border-white px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-white hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2;
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-white bg-transparent px-6 py-3 text-sm font-medium text-white transition-all hover:bg-white hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2;
   }
 
   .form-input {
-    @apply block w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-base text-gray-900 placeholder-gray-400 shadow-sm transition focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/20;
+    @apply block w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-base text-brand-navy placeholder-gray-400 transition-colors focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/20;
   }
 
   .form-input-error {
@@ -52,11 +46,11 @@
   }
 
   .form-label {
-    @apply block text-sm font-medium text-gray-700 mb-1;
+    @apply block text-sm font-medium text-gray-500 mb-1;
   }
 
   .form-error {
-    @apply mt-1 text-xs text-red-600;
+    @apply mt-1 text-xs text-red-500;
   }
 
   .section-container {

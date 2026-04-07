@@ -22,12 +22,12 @@ export default function ProgressIndicator({ currentStep, complete }) {
               {/* Step */}
               <li className="flex flex-col items-center">
                 <div
-                  className={`flex h-10 w-10 items-center justify-center rounded-full border-2 text-sm font-semibold transition-all ${
+                  className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-all ${
                     isDone
-                      ? "border-brand-blue bg-brand-blue text-white"
+                      ? "bg-brand-blue text-white"
                       : isActive
-                      ? "border-brand-blue bg-white text-brand-blue"
-                      : "border-gray-300 bg-white text-gray-400"
+                      ? "bg-brand-blue text-white"
+                      : "bg-gray-200 text-gray-400"
                   }`}
                   aria-current={isActive ? "step" : undefined}
                 >
@@ -44,8 +44,8 @@ export default function ProgressIndicator({ currentStep, complete }) {
                   )}
                 </div>
                 <span
-                  className={`mt-2 hidden sm:block text-xs font-medium whitespace-nowrap ${
-                    isActive ? "text-brand-blue" : isDone ? "text-gray-600" : "text-gray-400"
+                  className={`mt-2 hidden sm:block text-xs whitespace-nowrap ${
+                    isActive ? "font-medium text-brand-navy" : isDone ? "text-gray-500" : "text-gray-400"
                   }`}
                 >
                   {step.label}

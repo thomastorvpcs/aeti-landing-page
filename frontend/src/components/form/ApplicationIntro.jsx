@@ -89,37 +89,33 @@ export default function ApplicationIntro({ onStart }) {
     <div className="mx-auto max-w-2xl">
       {/* Header */}
       <div className="text-center mb-10">
-        <div className="inline-flex items-center gap-2 rounded-full bg-brand-blue/10 border border-brand-blue/20 px-4 py-1.5 mb-5">
-          <span className="h-2 w-2 rounded-full bg-green-500" />
-          <span className="text-xs font-semibold uppercase tracking-widest text-brand-blue">
+        <div className="inline-flex items-center gap-2 rounded-full bg-brand-blue/10 px-4 py-1.5 mb-5">
+          <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+          <span className="text-xs font-medium tracking-wide text-brand-blue">
             Now accepting applications
           </span>
         </div>
-        <h1 className="text-3xl font-bold text-brand-navy sm:text-4xl">
+        <h1 className="text-4xl font-semibold tracking-tight text-brand-navy sm:text-5xl">
           Apple Business Trade-In
         </h1>
-        <p className="mt-3 text-lg text-gray-600">
+        <p className="mt-4 text-lg text-gray-500 font-light">
           Reseller application — takes approximately 10 minutes to complete.
         </p>
       </div>
 
       {/* Application steps */}
-      <div className="rounded-2xl bg-white shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden mb-6">
-        <div className="bg-brand-navy px-6 py-4 flex items-center gap-3">
-          <svg className="w-5 h-5 text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
-          <h2 className="text-base font-semibold text-white">What you'll complete</h2>
+      <div className="rounded-2xl bg-white border border-gray-200 overflow-hidden mb-4">
+        <div className="px-6 py-5 border-b border-gray-100">
+          <h2 className="text-base font-semibold text-brand-navy">What you'll complete</h2>
         </div>
-
         <ol className="divide-y divide-gray-100">
           {FORM_STEPS.map((item) => (
             <li key={item.number} className="flex items-start gap-4 px-6 py-4">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-blue text-sm font-bold text-white mt-0.5">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-blue text-xs font-semibold text-white mt-0.5">
                 {item.number}
               </div>
               <div>
-                <p className="text-sm font-semibold text-gray-900">{item.title}</p>
+                <p className="text-sm font-medium text-brand-navy">{item.title}</p>
                 <p className="mt-0.5 text-sm text-gray-500 leading-relaxed">
                   {item.description}
                 </p>
@@ -130,22 +126,22 @@ export default function ApplicationIntro({ onStart }) {
       </div>
 
       {/* Required documents */}
-      <div className="rounded-2xl bg-amber-50 border border-amber-200 overflow-hidden mb-8">
-        <div className="px-6 py-4 flex items-center gap-3 border-b border-amber-200">
-          <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      <div className="rounded-2xl bg-brand-light border border-gray-200 overflow-hidden mb-4">
+        <div className="px-6 py-5 border-b border-gray-200 flex items-center gap-2">
+          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <h2 className="text-base font-semibold text-amber-800">Documents to have ready</h2>
+          <h2 className="text-base font-semibold text-brand-navy">Documents to have ready</h2>
         </div>
-        <ul className="divide-y divide-amber-100">
+        <ul className="divide-y divide-gray-200">
           {REQUIRED_DOCS.map((doc) => (
             <li key={doc.name} className="flex items-start gap-4 px-6 py-4">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700 mt-0.5">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white border border-gray-200 text-gray-500 mt-0.5">
                 {doc.icon}
               </div>
               <div>
-                <p className="text-sm font-semibold text-amber-900">{doc.name}</p>
-                <p className="mt-0.5 text-sm text-amber-700 leading-relaxed">{doc.detail}</p>
+                <p className="text-sm font-medium text-brand-navy">{doc.name}</p>
+                <p className="mt-0.5 text-sm text-gray-500 leading-relaxed">{doc.detail}</p>
               </div>
             </li>
           ))}
@@ -153,23 +149,19 @@ export default function ApplicationIntro({ onStart }) {
       </div>
 
       {/* After submission */}
-      <div className="rounded-2xl bg-white shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden mb-8">
-        <div className="bg-brand-navy px-6 py-4 flex items-center gap-3">
-          <svg className="w-5 h-5 text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <h2 className="text-base font-semibold text-white">What happens after you submit</h2>
+      <div className="rounded-2xl bg-white border border-gray-200 overflow-hidden mb-10">
+        <div className="px-6 py-5 border-b border-gray-100">
+          <h2 className="text-base font-semibold text-brand-navy">What happens after you submit</h2>
         </div>
-
         <ol className="divide-y divide-gray-100">
           {AFTER_SUBMISSION.map((item) => (
             <li key={item.number} className="flex items-start gap-4 px-6 py-4">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-blue/10 text-sm font-bold text-brand-blue mt-0.5">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-light text-xs font-semibold text-brand-blue mt-0.5">
                 {item.number}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <p className="text-sm font-semibold text-gray-900">{item.title}</p>
+                  <p className="text-sm font-medium text-brand-navy">{item.title}</p>
                   <span className="inline-block rounded-full bg-green-50 border border-green-200 px-2.5 py-0.5 text-xs font-medium text-green-700">
                     {item.duration}
                   </span>
@@ -179,20 +171,20 @@ export default function ApplicationIntro({ onStart }) {
                 </p>
                 {item.number === "1" && (
                   <a href={ndaPdf} download="NDA-Draft.pdf" className="mt-3 block w-48 group">
-                    <div className="w-48 h-64 rounded-lg border border-gray-200 shadow-sm overflow-hidden bg-white relative">
+                    <div className="w-48 h-64 rounded-xl border border-gray-200 overflow-hidden bg-white relative">
                       <img src={ndaPreview} alt="NDA draft preview" className="w-full h-full object-contain block" />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 group-active:bg-black/30 transition-colors flex items-end justify-center pb-3 opacity-0 group-hover:opacity-100">
-                        <span className="text-xs font-semibold text-white bg-black/60 rounded-full px-3 py-1">Download PDF</span>
+                        <span className="text-xs font-medium text-white bg-black/60 rounded-full px-3 py-1">Download PDF</span>
                       </div>
                     </div>
                   </a>
                 )}
                 {item.number === "2" && (
                   <a href={resellerPdf} download="Reseller-Letter-Draft.pdf" className="mt-3 block w-48 group">
-                    <div className="w-48 h-64 rounded-lg border border-gray-200 shadow-sm overflow-hidden bg-white relative">
+                    <div className="w-48 h-64 rounded-xl border border-gray-200 overflow-hidden bg-white relative">
                       <img src={resellerPreview} alt="Reseller letter preview" className="w-full h-full object-contain block" />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 group-active:bg-black/30 transition-colors flex items-end justify-center pb-3 opacity-0 group-hover:opacity-100">
-                        <span className="text-xs font-semibold text-white bg-black/60 rounded-full px-3 py-1">Download PDF</span>
+                        <span className="text-xs font-medium text-white bg-black/60 rounded-full px-3 py-1">Download PDF</span>
                       </div>
                     </div>
                   </a>
@@ -205,15 +197,15 @@ export default function ApplicationIntro({ onStart }) {
 
       {/* CTA */}
       <div className="text-center">
-        <button onClick={onStart} className="btn-primary px-10 py-4 text-base">
+        <button onClick={onStart} className="btn-primary px-10 py-3.5 text-base">
           Start application
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
           </svg>
         </button>
-        <p className="mt-4 text-sm text-gray-500">
+        <p className="mt-5 text-sm text-gray-400">
           Questions before you apply?{" "}
-          <a href="mailto:resellers@pcsww.com" className="text-brand-blue font-medium hover:underline">
+          <a href="mailto:resellers@pcsww.com" className="text-brand-blue hover:underline">
             resellers@pcsww.com
           </a>
         </p>
