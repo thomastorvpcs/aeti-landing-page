@@ -21,11 +21,11 @@ This document describes all Azure resources needed to fully replicate that infra
 
 ### 1. Resource Group
 
-A single resource group to contain all AETI-related Azure resources.
+A single resource group to contain all ABTI-related Azure resources.
 
 | Setting | Value |
 |---------|-------|
-| Name | `aeti-rg` (or per naming convention) |
+| Name | `abti-rg` (or per naming convention) |
 | Region | East US (or preferred region) |
 
 ---
@@ -43,7 +43,7 @@ Documents are private — never publicly accessible. Access is granted via short
 
 | Setting | Value |
 |---------|-------|
-| Storage account name | `aetiresellerdocs` *(must be globally unique — adjust if taken)* |
+| Storage account name | `abtiresellerdocs` *(must be globally unique — adjust if taken)* |
 | Replication | LRS (locally redundant) |
 | Performance | Standard |
 | HTTPS only | Yes |
@@ -73,7 +73,7 @@ Used to queue onboarding jobs asynchronously. When a reseller submits their form
 
 | Setting | Value |
 |---------|-------|
-| Namespace name | `aeti-onboarding` *(must be globally unique — adjust if taken)* |
+| Namespace name | `abti-onboarding` *(must be globally unique — adjust if taken)* |
 | Pricing tier | **Standard** *(required for dead-letter queuing)* |
 | Region | Same as resource group |
 | Queue name | `onboarding-jobs` |
@@ -93,10 +93,10 @@ Primary application database. Stores all reseller submissions, application statu
 
 | Setting | Value |
 |---------|-------|
-| Server name | `aeti-db` *(must be globally unique — adjust if taken)* |
+| Server name | `abti-db` *(must be globally unique — adjust if taken)* |
 | Tier | Flexible Server — Burstable B1ms (dev/staging) or General Purpose D2s_v3 (production) |
 | PostgreSQL version | 18 |
-| Admin username | `aetidbadmin` *(or per convention)* |
+| Admin username | `abtidbadmin` *(or per convention)* |
 | Admin password | Generate a strong password — store in Key Vault |
 | Storage | 32 GB (auto-grow enabled) |
 | Backup retention | 7 days |
@@ -104,7 +104,7 @@ Primary application database. Stores all reseller submissions, application statu
 | Public network access | Disabled — restrict to App Service via VNet or firewall rules |
 | SSL enforcement | Enabled |
 
-**Database to create:** `aeti_onboarding`
+**Database to create:** `abti_onboarding`
 
 ---
 
@@ -115,7 +115,7 @@ A single App Service Plan that hosts both the web API and the worker as separate
 
 | Setting | Value |
 |---------|-------|
-| Plan name | `aeti-plan` |
+| Plan name | `abti-plan` |
 | OS | Linux |
 | SKU | B2 (dev/staging) or P1v3 (production) |
 | Region | Same as resource group |
@@ -129,9 +129,9 @@ Hosts the Node.js/Express API that handles form submissions, file uploads, webho
 
 | Setting | Value |
 |---------|-------|
-| App name | `aeti-api` *(must be globally unique — becomes `aeti-api.azurewebsites.net`)* |
+| App name | `abti-api` *(must be globally unique — becomes `abti-api.azurewebsites.net`)* |
 | Runtime | Node.js 20 LTS |
-| App Service Plan | `aeti-plan` (from above) |
+| App Service Plan | `abti-plan` (from above) |
 | Always On | Yes |
 | HTTPS only | Yes |
 | Minimum TLS version | 1.2 |
@@ -166,9 +166,9 @@ Hosts the background worker process that polls the Service Bus queue and handles
 
 | Setting | Value |
 |---------|-------|
-| App name | `aeti-worker` *(must be globally unique)* |
+| App name | `abti-worker` *(must be globally unique)* |
 | Runtime | Node.js 20 LTS |
-| App Service Plan | `aeti-plan` (shared with web API) |
+| App Service Plan | `abti-plan` (shared with web API) |
 | Always On | Yes |
 | Start command | `node src/workers/onboarding-worker.js` |
 
@@ -193,32 +193,32 @@ The script below creates all required resources using the Azure CLI. Run it from
 set -euo pipefail
 
 # ── CONFIGURATION — update these before running ────────────────────────────
-RESOURCE_GROUP="aeti-rg"
+RESOURCE_GROUP="abti-rg"
 LOCATION="eastus"                          # change to preferred Azure region
 
 # Storage (replaces S3)
-STORAGE_ACCOUNT="aetiresellerdocs"         # must be globally unique, lowercase, 3–24 chars
+STORAGE_ACCOUNT="abtiresellerdocs"         # must be globally unique, lowercase, 3–24 chars
 BLOB_CONTAINER="reseller-docs"
 
 # Service Bus (replaces SQS)
-SERVICE_BUS_NAMESPACE="aeti-onboarding"   # must be globally unique
+SERVICE_BUS_NAMESPACE="abti-onboarding"   # must be globally unique
 SERVICE_BUS_QUEUE="onboarding-jobs"
 SERVICE_BUS_POLICY="app-send-listen"
 
 # PostgreSQL (replaces Render PostgreSQL)
-DB_SERVER="aeti-db"                        # must be globally unique
-DB_ADMIN="aetidbadmin"
+DB_SERVER="abti-db"                        # must be globally unique
+DB_ADMIN="abtidbadmin"
 DB_PASSWORD="<generate-a-strong-password>" # change before running
-DB_NAME="aeti_onboarding"
+DB_NAME="abti_onboarding"
 
 # App Service (replaces Render web + worker)
-APP_PLAN="aeti-plan"
-APP_API="aeti-api"                         # becomes aeti-api.azurewebsites.net
-APP_WORKER="aeti-worker"
+APP_PLAN="abti-plan"
+APP_API="abti-api"                         # becomes abti-api.azurewebsites.net
+APP_WORKER="abti-worker"
 # ───────────────────────────────────────────────────────────────────────────
 
 echo ""
-echo "=== AETI Azure Resource Provisioning ==="
+echo "=== ABTI Azure Resource Provisioning ==="
 echo ""
 
 # 1. Resource Group
@@ -421,11 +421,11 @@ AZURE_SERVICE_BUS_CONNECTION_STRING=<queue-scoped SAS connection string>
 AZURE_SERVICE_BUS_QUEUE_NAME=onboarding-jobs
 
 # Database (replaces Render PostgreSQL)
-DATABASE_URL=postgresql://aetidbadmin:<password>@aeti-db.postgres.database.azure.com/aeti_onboarding?sslmode=require
+DATABASE_URL=postgresql://abtidbadmin:<password>@abti-db.postgres.database.azure.com/abti_onboarding?sslmode=require
 
 # App Service hostnames
-Web API: https://aeti-api.azurewebsites.net
-Worker:  https://aeti-worker.azurewebsites.net
+Web API: https://abti-api.azurewebsites.net
+Worker:  https://abti-worker.azurewebsites.net
 ```
 
 These replace the following which can then be removed:
@@ -463,8 +463,8 @@ Render worker service URL
 - [ ] Dead-letter queue visible on the Service Bus queue
 - [ ] Queue-scoped Shared Access Policy created with Send + Listen only
 - [ ] PostgreSQL Flexible Server created with SSL enforced
-- [ ] Database `aeti_onboarding` created
+- [ ] Database `abti_onboarding` created
 - [ ] App Service Plan created (Linux, B2 or higher)
-- [ ] Web API App Service created (`aeti-api`) with Always On and HTTPS only
-- [ ] Worker App Service created (`aeti-worker`) with correct start command
+- [ ] Web API App Service created (`abti-api`) with Always On and HTTPS only
+- [ ] Worker App Service created (`abti-worker`) with correct start command
 - [ ] All connection strings and hostnames handed back to dev team
