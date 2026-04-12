@@ -95,7 +95,7 @@ Primary application database. Stores all reseller submissions, application statu
 |---------|-------|
 | Server name | `aeti-db` *(must be globally unique — adjust if taken)* |
 | Tier | Flexible Server — Burstable B1ms (dev/staging) or General Purpose D2s_v3 (production) |
-| PostgreSQL version | 16 |
+| PostgreSQL version | 18 |
 | Admin username | `aetidbadmin` *(or per convention)* |
 | Admin password | Generate a strong password — store in Key Vault |
 | Storage | 32 GB (auto-grow enabled) |
@@ -297,7 +297,7 @@ az postgres flexible-server create \
   --admin-password "$DB_PASSWORD" \
   --sku-name Standard_B1ms \
   --tier Burstable \
-  --version 16 \
+  --version 18 \
   --storage-size 32 \
   --backup-retention 7 \
   --public-access None \
