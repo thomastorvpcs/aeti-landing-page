@@ -25,7 +25,10 @@ A single resource group to contain all ABTI-related Azure resources.
 
 | Setting | Value |
 |---------|-------|
-| Name | `abti-rg` (or per naming convention) |
+| Name | `RG-PCS-ABTI` |
+| OWNER tag | `Thomas Torvund` |
+| PURPOSE tag | `Apple Business Trade-In Reseller Portal` |
+| ENV tag | `DEV` |
 | Region | East US (or preferred region) |
 
 ---
@@ -193,8 +196,11 @@ The script below creates all required resources using the Azure CLI. Run it from
 set -euo pipefail
 
 # ── CONFIGURATION — update these before running ────────────────────────────
-RESOURCE_GROUP="abti-rg"
+RESOURCE_GROUP="RG-PCS-ABTI"
 LOCATION="eastus"                          # change to preferred Azure region
+RG_OWNER="Thomas Torvund"
+RG_PURPOSE="Apple Business Trade-In Reseller Portal"
+RG_ENV="DEV"
 
 # Storage (replaces S3)
 STORAGE_ACCOUNT="abtiresellerdocs"         # must be globally unique, lowercase, 3–24 chars
@@ -226,6 +232,7 @@ echo "Creating resource group..."
 az group create \
   --name "$RESOURCE_GROUP" \
   --location "$LOCATION" \
+  --tags OWNER="$RG_OWNER" PURPOSE="$RG_PURPOSE" ENV="$RG_ENV" \
   --output none
 
 # 2. Storage Account
