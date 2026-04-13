@@ -51,8 +51,11 @@ function DetailModal({ reseller, onClose, onDelete }) {
 
   useEffect(() => {
     // Reset all action state when switching to a different reseller
+    setResending(false);
     setResendResult(null);
+    setCancelling(false);
     setCancelResult(null);
+    setDeleting(false);
     setDeleteError(null);
 
     if (!reseller) return;
