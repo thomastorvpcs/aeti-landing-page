@@ -154,4 +154,30 @@ async function getAgreementStatus(agreementId) {
   return response.data.status; // e.g. "SIGNED", "OUT_FOR_SIGNATURE", "CANCELLED"
 }
 
-module.exports = { sendNdaAgreement, downloadSignedNda, registerWebhook, getLibraryTemplates, getAgreementStatus };
+/**
+ * Send a reminder to a specific participant in an agreement.
+ * participantLabel: "Reseller" (order 1) or "PCSLegal" (order 2)
+ */
+async function sendReminder(agreementId, participantLabel) {
+  const client = await apiClient();
+
+  // Get all participants to find the right one
+  const membersRes = await client.get(`/agreements/${agreementId}/members`);
+  const participantSets = membersRes.data.participantSets || [];
+
+  const targetSet = participantSets.find((s) => s.label === participantLabel);
+  if (!targetSet) throw new Error(`Participant set "${participantLabel}" not found in agreement ${agreementId}`);
+
+  const participantIds = targetSet.memberInfos.map((m) => m.id);
+
+  const response = await client.post(`/agreements/${agreementId}/reminders`, {
+    recipientParticipantIds: participantIds,
+    status: "ACTIVE",
+    note: "A reminder has been sent from the PCS reseller portal.",
+  });
+
+  console.log(`[acrobat] Reminder sent to "${participantLabel}" for agreement ${agreementId}`);
+  return response.data;
+}
+
+module.exports = { sendNdaAgreement, downloadSignedNda, registerWebhook, getLibraryTemplates, getAgreementStatus, sendReminder };

@@ -1,6 +1,7 @@
 const express = require("express");
 const pool = require("../db");
 const { getPresignedUrl } = require("../services/s3");
+const { sendReminder } = require("../services/acrobat-sign");
 const requireDashboardAuth = require("../middleware/requireDashboardAuth");
 
 const router = express.Router();
@@ -60,6 +61,36 @@ router.get("/resellers/:id/files", async (req, res, next) => {
     ]);
 
     res.json({ w9: w9Url, bankLetter: bankLetterUrl, vendorForm: vendorFormUrl, signedNda: signedNdaUrl });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/resellers/:id/resend-nda", async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      "SELECT status, docusign_envelope_id FROM resellers WHERE id = $1",
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: "Reseller not found" });
+
+    const { status, docusign_envelope_id: agreementId } = rows[0];
+
+    if (!agreementId) {
+      return res.status(400).json({ error: "No Acrobat Sign agreement on record for this reseller." });
+    }
+
+    if (status === "NDA Pending") {
+      await sendReminder(agreementId, "Reseller");
+      return res.json({ sent: true, to: "reseller" });
+    }
+
+    if (status === "Awaiting Countersign") {
+      await sendReminder(agreementId, "PCSLegal");
+      return res.json({ sent: true, to: "legal" });
+    }
+
+    return res.status(400).json({ error: `Cannot resend NDA in status "${status}".` });
   } catch (err) {
     next(err);
   }

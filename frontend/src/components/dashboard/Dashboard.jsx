@@ -42,6 +42,8 @@ function formatDateTime(iso) {
 function DetailModal({ reseller, onClose }) {
   const [files, setFiles] = useState(null);
   const [filesLoading, setFilesLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [resendResult, setResendResult] = useState(null); // "ok" | "error"
 
   useEffect(() => {
     if (!reseller) return;
@@ -55,7 +57,27 @@ function DetailModal({ reseller, onClose }) {
       .finally(() => setFilesLoading(false));
   }, [reseller?.id]);
 
+  async function handleResend() {
+    setResending(true);
+    setResendResult(null);
+    try {
+      await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL || ""}/api/dashboard/resellers/${reseller.id}/resend-nda`,
+        {},
+        { headers: authHeaders() }
+      );
+      setResendResult("ok");
+    } catch {
+      setResendResult("error");
+    } finally {
+      setResending(false);
+    }
+  }
+
   if (!reseller) return null;
+
+  const canResend = reseller.status === "NDA Pending" || reseller.status === "Awaiting Countersign";
+  const resendLabel = reseller.status === "NDA Pending" ? "Resend to reseller" : "Resend to legal";
 
   function row(label, value) {
     return (
@@ -90,9 +112,22 @@ function DetailModal({ reseller, onClose }) {
 
         <div className="px-6 py-5 space-y-5">
           {/* Status */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
             <StatusBadge status={reseller.status} />
-            <span className="text-xs text-gray-400">Submitted {formatDate(reseller.created_at)}</span>
+            <div className="flex items-center gap-3">
+              {canResend && (
+                <button
+                  onClick={handleResend}
+                  disabled={resending}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-brand-blue px-3 py-1 text-xs font-semibold text-brand-blue hover:bg-brand-blue/5 transition-colors disabled:opacity-50"
+                >
+                  {resending ? "Sending…" : resendLabel}
+                </button>
+              )}
+              {resendResult === "ok" && <span className="text-xs text-green-600 font-medium">Reminder sent</span>}
+              {resendResult === "error" && <span className="text-xs text-red-500 font-medium">Failed — try again</span>}
+              <span className="text-xs text-gray-400">Submitted {formatDate(reseller.created_at)}</span>
+            </div>
           </div>
 
           {/* Company */}
