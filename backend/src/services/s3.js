@@ -1,67 +1,73 @@
-const {
-  S3Client,
-  PutObjectCommand,
-  GetObjectCommand,
-} = require("@aws-sdk/client-s3");
-const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
+const { BlobServiceClient, generateBlobSASQueryParameters, BlobSASPermissions, StorageSharedKeyCredential } = require("@azure/storage-blob");
 
-const isLocal = process.env.NODE_ENV !== "production";
+const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+const CONTAINER = process.env.AZURE_BLOB_CONTAINER || "reseller-docs";
 
-const s3 = new S3Client({
-  region: process.env.AWS_REGION || "us-east-1",
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || "test",
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "test",
-  },
-  ...(isLocal && {
-    endpoint: process.env.AWS_ENDPOINT || "http://localhost:4566",
-    forcePathStyle: true,
-  }),
-});
-
-const BUCKET = process.env.S3_BUCKET || "aeti-reseller-docs";
+function getClient() {
+  if (!connectionString) throw new Error("AZURE_STORAGE_CONNECTION_STRING is not set");
+  return BlobServiceClient.fromConnectionString(connectionString);
+}
 
 /**
- * Upload a file buffer to S3 with AES-256 server-side encryption.
- * Returns the S3 object key.
+ * Upload a file buffer to Azure Blob Storage.
+ * Returns the blob name (key).
  */
 async function uploadFile({ key, buffer, contentType }) {
-  await s3.send(
-    new PutObjectCommand({
-      Bucket: BUCKET,
-      Key: key,
-      Body: buffer,
-      ContentType: contentType,
-      ServerSideEncryption: "AES256",
-      ACL: "private",
-    })
-  );
+  const client = getClient();
+  const containerClient = client.getContainerClient(CONTAINER);
+  const blockBlobClient = containerClient.getBlockBlobClient(key);
+  await blockBlobClient.uploadData(buffer, {
+    blobHTTPHeaders: { blobContentType: contentType },
+  });
   return key;
 }
 
 /**
- * Download a file from S3 and return its Buffer.
+ * Download a blob and return its Buffer.
  */
 async function downloadFile(key) {
-  const response = await s3.send(
-    new GetObjectCommand({ Bucket: BUCKET, Key: key })
-  );
+  const client = getClient();
+  const containerClient = client.getContainerClient(CONTAINER);
+  const blockBlobClient = containerClient.getBlockBlobClient(key);
+  const downloadResponse = await blockBlobClient.download(0);
   const chunks = [];
-  for await (const chunk of response.Body) {
+  for await (const chunk of downloadResponse.readableStreamBody) {
     chunks.push(chunk);
   }
   return Buffer.concat(chunks);
 }
 
 /**
- * Generate a pre-signed GET URL (for internal use only — not for public exposure).
+ * Generate a short-lived SAS URL for a blob.
  */
 async function getPresignedUrl(key, expiresInSeconds = 3600) {
-  return getSignedUrl(
-    s3,
-    new GetObjectCommand({ Bucket: BUCKET, Key: key }),
-    { expiresIn: expiresInSeconds }
-  );
+  const client = getClient();
+
+  // Parse account name and key from connection string
+  const accountNameMatch = connectionString.match(/AccountName=([^;]+)/);
+  const accountKeyMatch = connectionString.match(/AccountKey=([^;]+)/);
+  if (!accountNameMatch || !accountKeyMatch) throw new Error("Invalid AZURE_STORAGE_CONNECTION_STRING");
+
+  const accountName = accountNameMatch[1];
+  const accountKey = accountKeyMatch[1];
+
+  const sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey);
+
+  const expiresOn = new Date(Date.now() + expiresInSeconds * 1000);
+
+  const sasToken = generateBlobSASQueryParameters(
+    {
+      containerName: CONTAINER,
+      blobName: key,
+      permissions: BlobSASPermissions.parse("r"),
+      expiresOn,
+    },
+    sharedKeyCredential
+  ).toString();
+
+  const containerClient = client.getContainerClient(CONTAINER);
+  const blockBlobClient = containerClient.getBlockBlobClient(key);
+  return `${blockBlobClient.url}?${sasToken}`;
 }
 
 module.exports = { uploadFile, downloadFile, getPresignedUrl };

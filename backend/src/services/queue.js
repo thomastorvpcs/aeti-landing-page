@@ -1,65 +1,65 @@
-const { SQSClient, SendMessageCommand, ReceiveMessageCommand, DeleteMessageCommand } = require("@aws-sdk/client-sqs");
+const { ServiceBusClient } = require("@azure/service-bus");
 
-const isLocal = process.env.NODE_ENV !== "production";
+const connectionString = process.env.AZURE_SERVICE_BUS_CONNECTION_STRING;
+const QUEUE_NAME = process.env.AZURE_SERVICE_BUS_QUEUE_NAME || "onboarding-jobs";
 
-const sqs = new SQSClient({
-  region: process.env.AWS_REGION || "us-east-1",
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || "test",
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "test",
-  },
-  ...(isLocal && {
-    endpoint: process.env.AWS_ENDPOINT || "http://localhost:4566",
-  }),
-});
-
-const QUEUE_URL =
-  process.env.SQS_QUEUE_URL ||
-  "http://localhost:4566/000000000000/aeti-onboarding";
+function getClient() {
+  if (!connectionString) throw new Error("AZURE_SERVICE_BUS_CONNECTION_STRING is not set");
+  return new ServiceBusClient(connectionString);
+}
 
 /**
  * Enqueue a job. `type` is the job type string; `payload` is an object.
  */
 async function enqueue(type, payload) {
-  await sqs.send(
-    new SendMessageCommand({
-      QueueUrl: QUEUE_URL,
-      MessageBody: JSON.stringify({ type, payload }),
-      MessageAttributes: {
-        jobType: { DataType: "String", StringValue: type },
-      },
-    })
-  );
+  const client = getClient();
+  const sender = client.createSender(QUEUE_NAME);
+  try {
+    await sender.sendMessages({
+      body: JSON.stringify({ type, payload }),
+      applicationProperties: { jobType: type },
+    });
+  } finally {
+    await sender.close();
+    await client.close();
+  }
 }
 
 /**
  * Poll for one message. Returns null if queue is empty.
  */
 async function receive() {
-  const res = await sqs.send(
-    new ReceiveMessageCommand({
-      QueueUrl: QUEUE_URL,
-      MaxNumberOfMessages: 1,
-      WaitTimeSeconds: 20, // long poll
-      MessageAttributeNames: ["All"],
-      VisibilityTimeout: 60,
-    })
-  );
-  if (!res.Messages || res.Messages.length === 0) return null;
-  const msg = res.Messages[0];
-  return {
-    receiptHandle: msg.ReceiptHandle,
-    body: JSON.parse(msg.Body),
-  };
+  const client = getClient();
+  const receiver = client.createReceiver(QUEUE_NAME, { receiveMode: "peekLock" });
+  try {
+    const messages = await receiver.receiveMessages(1, { maxWaitTimeInMs: 20000 });
+    if (!messages || messages.length === 0) {
+      await receiver.close();
+      await client.close();
+      return null;
+    }
+    const msg = messages[0];
+    return {
+      receiptHandle: { receiver, message: msg, client },
+      body: typeof msg.body === "string" ? JSON.parse(msg.body) : msg.body,
+    };
+  } catch (err) {
+    await receiver.close();
+    await client.close();
+    throw err;
+  }
 }
 
 /**
- * Delete (ack) a message after successful processing.
+ * Acknowledge (complete) a message after successful processing.
  */
-async function ack(receiptHandle) {
-  await sqs.send(
-    new DeleteMessageCommand({ QueueUrl: QUEUE_URL, ReceiptHandle: receiptHandle })
-  );
+async function ack({ receiver, message, client }) {
+  try {
+    await receiver.completeMessage(message);
+  } finally {
+    await receiver.close();
+    await client.close();
+  }
 }
 
 module.exports = { enqueue, receive, ack };
