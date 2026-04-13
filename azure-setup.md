@@ -46,7 +46,7 @@ Documents are private — never publicly accessible. Access is granted via short
 
 | Setting | Value |
 |---------|-------|
-| Storage account name | `abtiresellerdocs2026` *(must be globally unique — adjust if taken)* |
+| Storage account name | `abtireselleronboarding` *(must be globally unique — adjust if taken)* |
 | Replication | LRS (locally redundant) |
 | Performance | Standard |
 | HTTPS only | Yes |
@@ -204,7 +204,7 @@ RG_PURPOSE="Apple Business Trade-In Reseller Portal"
 RG_ENV="DEV"
 
 # Storage (replaces S3)
-STORAGE_ACCOUNT="abtiresellerdocs2026"     # must be globally unique, lowercase, 3–24 chars
+STORAGE_ACCOUNT="abtireselleronboarding"     # must be globally unique, lowercase, 3–24 chars
 BLOB_CONTAINER="reseller-docs"
 
 # Service Bus (replaces SQS)
