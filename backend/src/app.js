@@ -58,6 +58,7 @@ app.get("/admin/run-migration", async (_req, res) => {
     const fs = require("fs");
     const path = require("path");
     const migrations = [
+      "001_initial.sql",
       "002_add_vendor_fields.sql",
       "003_add_nda_signer.sql",
       "004_add_reseller_signed_at.sql",
