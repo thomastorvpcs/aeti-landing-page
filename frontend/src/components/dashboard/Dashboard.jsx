@@ -50,6 +50,11 @@ function DetailModal({ reseller, onClose, onDelete }) {
   const [deleteError, setDeleteError] = useState(null);
 
   useEffect(() => {
+    // Reset all action state when switching to a different reseller
+    setResendResult(null);
+    setCancelResult(null);
+    setDeleteError(null);
+
     if (!reseller) return;
     setFiles(null);
     setFilesLoading(true);
