@@ -208,7 +208,7 @@ STORAGE_ACCOUNT="abtireselleronboarding"     # must be globally unique, lowercas
 BLOB_CONTAINER="reseller-docs"
 
 # Service Bus (replaces SQS)
-SERVICE_BUS_NAMESPACE="abti-onboarding"   # must be globally unique
+SERVICE_BUS_NAMESPACE="abti-onboarding-pcs"   # must be globally unique
 SERVICE_BUS_QUEUE="onboarding-jobs"
 SERVICE_BUS_POLICY="app-send-listen"
 
@@ -266,11 +266,12 @@ az storage container create \
 # 4. Service Bus Namespace (Standard tier — required for dead-letter queuing)
 echo "Creating Service Bus namespace..."
 az servicebus namespace create \
-  --name "$SERVICE_BUS_NAMESPACE" \
-  --resource-group "$RESOURCE_GROUP" \
-  --location "$LOCATION" \
+  --name "abti-onboarding-pcs" \
+  --resource-group "RG-PCS-ABTI" \
+  --location "eastus" \
   --sku Standard \
   --output none
+
 
 # 5. Service Bus Queue
 #    - lock-duration PT1M  = 60s, matches current SQS visibility timeout
