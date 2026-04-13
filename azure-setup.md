@@ -198,7 +198,7 @@ set -euo pipefail
 # ── CONFIGURATION — update these before running ────────────────────────────
 RESOURCE_GROUP="RG-PCS-ABTI"
 LOCATION="eastus"                          # change to preferred Azure region
-DB_LOCATION="eastus2"                      # PostgreSQL region (eastus is restricted)
+DB_LOCATION="centralus"                    # PostgreSQL region (eastus/eastus2 are restricted)
 RG_OWNER="Thomas Torvund"
 RG_PURPOSE="Apple Business Trade-In Reseller Portal"
 RG_ENV="DEV"
