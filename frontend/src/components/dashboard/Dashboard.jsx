@@ -47,7 +47,7 @@ function DetailModal({ reseller, onClose }) {
     if (!reseller) return;
     setFiles(null);
     setFilesLoading(true);
-    axios.get(`/api/dashboard/resellers/${reseller.id}/files`, {
+    axios.get(`${import.meta.env.VITE_API_BASE_URL || ""}/api/dashboard/resellers/${reseller.id}/files`, {
       headers: authHeaders(),
     })
       .then(({ data }) => setFiles(data))
@@ -202,7 +202,7 @@ export default function Dashboard() {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await axios.get("/api/dashboard/resellers", {
+      const { data } = await axios.get(`${import.meta.env.VITE_API_BASE_URL || ""}/api/dashboard/resellers`, {
         headers: authHeaders(),
       });
       setResellers(data);
@@ -230,7 +230,7 @@ export default function Dashboard() {
     setLoginLoading(true);
     setLoginError(null);
     try {
-      const { data } = await axios.post("/api/dashboard/auth/login", {
+      const { data } = await axios.post(`${import.meta.env.VITE_API_BASE_URL || ""}/api/dashboard/auth/login`, {
         email: loginEmail,
         password: loginPassword,
       });

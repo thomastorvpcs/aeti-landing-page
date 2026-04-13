@@ -204,7 +204,7 @@ export default function OnboardingForm() {
       body.append("w9", w9File);
       body.append("bankLetter", bankLetterFile);
 
-      await axios.post("/api/submit", body, {
+      await axios.post(`${import.meta.env.VITE_API_BASE_URL || ""}/api/submit`, body, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
