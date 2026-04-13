@@ -184,7 +184,7 @@ function DetailModal({ reseller, onClose, onDelete }) {
               {resendResult === "error" && <span className="text-xs text-red-500 font-medium">Failed — try again</span>}
               {cancelResult === "ok" && <span className="text-xs text-red-600 font-medium">Agreement cancelled</span>}
               {cancelResult === "error" && <span className="text-xs text-red-500 font-medium">Cancel failed — try again</span>}
-              {reseller.status === "Cancelled" && (
+              {(reseller.status === "Cancelled" || reseller.status === "Initiated") && (
                 <button
                   onClick={handleDelete}
                   disabled={deleting}

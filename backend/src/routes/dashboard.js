@@ -132,8 +132,8 @@ router.delete("/resellers/:id", async (req, res, next) => {
       [req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: "Reseller not found" });
-    if (rows[0].status !== "Cancelled") {
-      return res.status(400).json({ error: "Only cancelled resellers can be deleted." });
+    if (!["Cancelled", "Initiated"].includes(rows[0].status)) {
+      return res.status(400).json({ error: "Only cancelled or initiated resellers can be deleted." });
     }
 
     // Delete all files in blob storage for this reseller
