@@ -70,4 +70,24 @@ async function getPresignedUrl(key, expiresInSeconds = 3600) {
   return `${blockBlobClient.url}?${sasToken}`;
 }
 
-module.exports = { uploadFile, downloadFile, getPresignedUrl };
+/**
+ * Delete a single blob.
+ */
+async function deleteFile(key) {
+  const client = getClient();
+  const containerClient = client.getContainerClient(CONTAINER);
+  await containerClient.getBlockBlobClient(key).deleteIfExists();
+}
+
+/**
+ * Delete all blobs whose name starts with the given prefix (e.g. "resellers/{id}/").
+ */
+async function deleteFolder(prefix) {
+  const client = getClient();
+  const containerClient = client.getContainerClient(CONTAINER);
+  for await (const blob of containerClient.listBlobsFlat({ prefix })) {
+    await containerClient.getBlockBlobClient(blob.name).deleteIfExists();
+  }
+}
+
+module.exports = { uploadFile, downloadFile, getPresignedUrl, deleteFile, deleteFolder };

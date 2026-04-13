@@ -39,13 +39,15 @@ function formatDateTime(iso) {
   return new Date(iso).toLocaleString("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-function DetailModal({ reseller, onClose }) {
+function DetailModal({ reseller, onClose, onDelete }) {
   const [files, setFiles] = useState(null);
   const [filesLoading, setFilesLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [resendResult, setResendResult] = useState(null); // "ok" | "error"
   const [cancelling, setCancelling] = useState(false);
   const [cancelResult, setCancelResult] = useState(null); // "ok" | "error"
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
 
   useEffect(() => {
     if (!reseller) return;
@@ -93,6 +95,22 @@ function DetailModal({ reseller, onClose }) {
       setCancelResult("error");
     } finally {
       setCancelling(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!window.confirm("Permanently delete this reseller and all their files? This cannot be undone.")) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await axios.delete(
+        `${import.meta.env.VITE_API_BASE_URL || ""}/api/dashboard/resellers/${reseller.id}`,
+        { headers: authHeaders() }
+      );
+      onDelete();
+    } catch (err) {
+      setDeleteError(err.response?.data?.error || "Delete failed — try again.");
+      setDeleting(false);
     }
   }
 
@@ -158,6 +176,16 @@ function DetailModal({ reseller, onClose }) {
               {resendResult === "error" && <span className="text-xs text-red-500 font-medium">Failed — try again</span>}
               {cancelResult === "ok" && <span className="text-xs text-red-600 font-medium">Agreement cancelled</span>}
               {cancelResult === "error" && <span className="text-xs text-red-500 font-medium">Cancel failed — try again</span>}
+              {reseller.status === "Cancelled" && (
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-red-400 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 hover:bg-red-100 transition-colors disabled:opacity-50"
+                >
+                  {deleting ? "Deleting…" : "Delete record"}
+                </button>
+              )}
+              {deleteError && <span className="text-xs text-red-500 font-medium">{deleteError}</span>}
               <span className="text-xs text-gray-400">Submitted {formatDate(reseller.created_at)}</span>
             </div>
           </div>
@@ -519,7 +547,11 @@ export default function Dashboard() {
         </p>
       </div>
 
-      <DetailModal reseller={selected} onClose={() => setSelected(null)} />
+      <DetailModal
+        reseller={selected}
+        onClose={() => setSelected(null)}
+        onDelete={() => { setSelected(null); load(); }}
+      />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 const express = require("express");
 const pool = require("../db");
-const { getPresignedUrl } = require("../services/s3");
+const { getPresignedUrl, deleteFolder } = require("../services/s3");
 const { sendReminder, cancelAgreement } = require("../services/acrobat-sign");
 const requireDashboardAuth = require("../middleware/requireDashboardAuth");
 
@@ -120,6 +120,29 @@ router.post("/resellers/:id/cancel-nda", async (req, res, next) => {
     );
 
     res.json({ cancelled: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete("/resellers/:id", async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      "SELECT id, status FROM resellers WHERE id = $1",
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: "Reseller not found" });
+    if (rows[0].status !== "Cancelled") {
+      return res.status(400).json({ error: "Only cancelled resellers can be deleted." });
+    }
+
+    // Delete all files in blob storage for this reseller
+    await deleteFolder(`resellers/${req.params.id}/`);
+
+    // Delete the database record
+    await pool.query("DELETE FROM resellers WHERE id = $1", [req.params.id]);
+
+    res.json({ deleted: true });
   } catch (err) {
     next(err);
   }
