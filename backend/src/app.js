@@ -51,6 +51,18 @@ app.use("/acrobat/webhook", acrobatWebhookRouter);
 app.use("/api/dashboard/auth", dashboardLoginRateLimiter, dashboardAuthRouter);
 app.use("/api/dashboard", dashboardRouter);
 
+// Admin route to register Acrobat Sign webhook
+app.get("/admin/register-webhook", async (_req, res) => {
+  try {
+    const { registerWebhook } = require("./services/acrobat-sign");
+    const webhookUrl = "https://abti-api.azurewebsites.net/acrobat/webhook";
+    const id = await registerWebhook(webhookUrl);
+    res.json({ success: true, webhookId: id, url: webhookUrl });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Admin route to run all pending DB migrations
 app.get("/admin/run-migration", async (_req, res) => {
   try {
