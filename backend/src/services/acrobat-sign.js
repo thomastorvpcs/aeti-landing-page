@@ -180,4 +180,16 @@ async function sendReminder(agreementId, participantLabel) {
   return response.data;
 }
 
-module.exports = { sendNdaAgreement, downloadSignedNda, registerWebhook, getLibraryTemplates, getAgreementStatus, sendReminder };
+/**
+ * Cancel an in-progress agreement.
+ */
+async function cancelAgreement(agreementId) {
+  const client = await apiClient();
+  await client.put(`/agreements/${agreementId}/state`, {
+    state: "CANCELLED",
+    agreementCancellationInfo: { comment: "Cancelled from PCS reseller portal." },
+  });
+  console.log(`[acrobat] Agreement ${agreementId} cancelled`);
+}
+
+module.exports = { sendNdaAgreement, downloadSignedNda, registerWebhook, getLibraryTemplates, getAgreementStatus, sendReminder, cancelAgreement };

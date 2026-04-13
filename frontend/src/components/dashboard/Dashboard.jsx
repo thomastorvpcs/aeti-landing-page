@@ -44,6 +44,8 @@ function DetailModal({ reseller, onClose }) {
   const [filesLoading, setFilesLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [resendResult, setResendResult] = useState(null); // "ok" | "error"
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelResult, setCancelResult] = useState(null); // "ok" | "error"
 
   useEffect(() => {
     if (!reseller) return;
@@ -76,8 +78,27 @@ function DetailModal({ reseller, onClose }) {
 
   if (!reseller) return null;
 
+  async function handleCancel() {
+    if (!window.confirm("Cancel this NDA signing? This will void the agreement in Acrobat Sign and cannot be undone.")) return;
+    setCancelling(true);
+    setCancelResult(null);
+    try {
+      await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL || ""}/api/dashboard/resellers/${reseller.id}/cancel-nda`,
+        {},
+        { headers: authHeaders() }
+      );
+      setCancelResult("ok");
+    } catch {
+      setCancelResult("error");
+    } finally {
+      setCancelling(false);
+    }
+  }
+
   const canResend = reseller.status === "NDA Pending" || reseller.status === "Awaiting Countersign";
   const resendLabel = reseller.status === "NDA Pending" ? "Resend to reseller" : "Resend to legal";
+  const canCancel = reseller.status === "NDA Pending" || reseller.status === "Awaiting Countersign";
 
   function row(label, value) {
     return (
@@ -124,8 +145,19 @@ function DetailModal({ reseller, onClose }) {
                   {resending ? "Sending…" : resendLabel}
                 </button>
               )}
+              {canCancel && (
+                <button
+                  onClick={handleCancel}
+                  disabled={cancelling || cancelResult === "ok"}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-red-300 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                >
+                  {cancelling ? "Cancelling…" : "Cancel signing"}
+                </button>
+              )}
               {resendResult === "ok" && <span className="text-xs text-green-600 font-medium">Reminder sent</span>}
               {resendResult === "error" && <span className="text-xs text-red-500 font-medium">Failed — try again</span>}
+              {cancelResult === "ok" && <span className="text-xs text-red-600 font-medium">Agreement cancelled</span>}
+              {cancelResult === "error" && <span className="text-xs text-red-500 font-medium">Cancel failed — try again</span>}
               <span className="text-xs text-gray-400">Submitted {formatDate(reseller.created_at)}</span>
             </div>
           </div>
