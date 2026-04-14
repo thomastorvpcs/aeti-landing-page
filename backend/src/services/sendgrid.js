@@ -4,6 +4,7 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL || "resellers@pcsww.com";
 const FROM_NAME = process.env.SENDGRID_FROM_NAME || "PCS Partner Program";
+const SUPPORT_EMAIL = process.env.SENDGRID_SUPPORT_EMAIL || FROM_EMAIL;
 const OPS_ALERT_EMAIL = process.env.PCS_OPS_EMAIL || "ops@pcsww.com";
 
 const TEMPLATE_WELCOME = process.env.SENDGRID_TEMPLATE_WELCOME;
@@ -70,7 +71,7 @@ async function sendWelcomeEmail({
       firstName,
       lastName,
       legalCompanyName,
-      supportEmail: FROM_EMAIL,
+      supportEmail: SUPPORT_EMAIL,
     };
   } else {
     msg.subject = `Welcome to the AETI Reseller Program, ${firstName}!`;
