@@ -70,7 +70,7 @@ async function sendWelcomeEmail({
       firstName,
       lastName,
       legalCompanyName,
-      supportEmail: "resellers@pcsww.com",
+      supportEmail: FROM_EMAIL,
     };
   } else {
     msg.subject = `Welcome to the AETI Reseller Program, ${firstName}!`;
