@@ -295,13 +295,19 @@ const STATUSES = ["All", "Initiated", "NDA Pending", "Awaiting Countersign", "ND
 
 export default function Dashboard() {
   const [resellers, setResellers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(() =>
+    sessionStorage.getItem("dashboard_token") ? null : "unauthorized"
+  );
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [selected, setSelected] = useState(null);
 
   const load = useCallback(async () => {
+    if (!sessionStorage.getItem("dashboard_token")) {
+      setError("unauthorized");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
