@@ -1,10 +1,17 @@
 const rateLimit = require("express-rate-limit");
 
+// Strip port from IP in case proxy forwards ip:port format
+function keyGenerator(req) {
+  const ip = req.ip || req.socket.remoteAddress || "unknown";
+  return ip.replace(/:\d+$/, "");
+}
+
 const globalRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 1000,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator,
   message: { error: "Too many requests. Please try again later." },
 });
 
@@ -13,6 +20,7 @@ const submissionRateLimiter = rateLimit({
   max: 5,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator,
   message: { error: "Too many form submissions from this IP. Please try again later." },
 });
 
@@ -21,6 +29,7 @@ const dashboardLoginRateLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator,
   message: { error: "Too many login attempts. Please try again later." },
 });
 
