@@ -61,6 +61,19 @@ app.get("/admin/register-webhook", async (_req, res) => {
   }
 });
 
+// OAuth callback helper — displays the authorization code so it can be copied
+app.get("/oauth/callback", (req, res) => {
+  const code = req.query.code;
+  if (!code) return res.status(400).send("<h2>No code received</h2>");
+  res.send(`
+    <html><body style="font-family:sans-serif;padding:40px">
+      <h2>Authorization code</h2>
+      <p>Copy this code and use it in the PowerShell token exchange:</p>
+      <textarea rows="4" style="width:100%;font-size:14px" onclick="this.select()">${code}</textarea>
+    </body></html>
+  `);
+});
+
 // Admin route to run all pending DB migrations
 app.get("/admin/run-migration", async (_req, res) => {
   try {
