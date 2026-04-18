@@ -1,7 +1,7 @@
 const express = require("express");
 const pool = require("../db");
 const { getPresignedUrl, deleteFolder } = require("../services/s3");
-const { sendReminder, cancelAgreement } = require("../services/acrobat-sign");
+const { sendReminder, cancelAgreement, sendNdaAgreement } = require("../services/acrobat-sign");
 const requireDashboardAuth = require("../middleware/requireDashboardAuth");
 
 const router = express.Router();
@@ -61,6 +61,44 @@ router.get("/resellers/:id/files", async (req, res, next) => {
     ]);
 
     res.json({ w9: w9Url, bankLetter: bankLetterUrl, vendorForm: vendorFormUrl, signedNda: signedNdaUrl });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/resellers/:id/send-nda", async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      "SELECT * FROM resellers WHERE id = $1",
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: "Reseller not found" });
+
+    const reseller = rows[0];
+
+    if (reseller.status !== "NDA Approval Pending") {
+      return res.status(400).json({
+        error: `Cannot send NDA — expected status "NDA Approval Pending", got "${reseller.status}".`,
+      });
+    }
+
+    const envelopeId = await sendNdaAgreement({
+      resellerId: reseller.id,
+      legalCompanyName: reseller.legal_company_name,
+      contactEmail: reseller.nda_signer_email || reseller.contact_email,
+      contactFirstName: reseller.nda_signer_first_name || reseller.contact_first_name,
+      contactLastName: reseller.nda_signer_last_name || reseller.contact_last_name,
+      addressCity: reseller.address_city,
+      addressState: reseller.address_state,
+    });
+
+    await pool.query(
+      "UPDATE resellers SET docusign_envelope_id = $1, status = $2, updated_at = NOW() WHERE id = $3",
+      [envelopeId, "NDA Pending", reseller.id]
+    );
+
+    console.log(`[dashboard] NDA approved and sent: reseller=${reseller.id} envelope=${envelopeId} by=${req.dashboardUser.email}`);
+    res.json({ sent: true, envelopeId });
   } catch (err) {
     next(err);
   }
@@ -132,8 +170,8 @@ router.delete("/resellers/:id", async (req, res, next) => {
       [req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: "Reseller not found" });
-    if (!["Cancelled", "Initiated"].includes(rows[0].status)) {
-      return res.status(400).json({ error: "Only cancelled or initiated resellers can be deleted." });
+    if (!["Cancelled", "Initiated", "NDA Approval Pending"].includes(rows[0].status)) {
+      return res.status(400).json({ error: "Only cancelled, initiated, or approval-pending resellers can be deleted." });
     }
 
     // Delete all files in blob storage for this reseller

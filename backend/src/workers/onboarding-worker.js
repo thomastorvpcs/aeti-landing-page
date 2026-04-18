@@ -3,7 +3,7 @@ require("dotenv").config();
 const pool = require("../db");
 const { receive, ack, enqueue } = require("../services/queue");
 const { uploadFile, downloadFile } = require("../services/s3"); // downloadFile used in handleNdaCompleted
-const { sendNdaAgreement, downloadSignedNda, getAgreementStatus } = require("../services/acrobat-sign");
+const { downloadSignedNda, getAgreementStatus } = require("../services/acrobat-sign");
 const { createVendor, updateVendorStatus, createTask } = require("../services/netsuite");
 const { sendWelcomeEmail, sendInternalAlert } = require("../services/sendgrid");
 const { generateAuthorizationLetter, generateVendorSetupForm } = require("../services/pdf");
@@ -103,33 +103,19 @@ async function handleResellerSubmitted(payload) {
     console.warn("[worker] NETSUITE_ACCOUNT_ID not set — skipping NetSuite steps");
   }
 
-  // 4. Send Acrobat Sign NDA — use dedicated NDA signer if provided, else fall back to commercial contact
-  const envelopeId = await withRetry(
-    () => sendNdaAgreement({
-      resellerId,
-      legalCompanyName,
-      contactEmail: ndaSignerEmail || contactEmail,
-      contactFirstName: ndaSignerFirstName || contactFirstName,
-      contactLastName: ndaSignerLastName || contactLastName,
-      addressCity: reseller.address_city,
-      addressState: reseller.address_state,
-    }),
-    "AcrobatSign sendNdaAgreement"
-  );
-
-  // 5. Update DB with integration IDs
+  // 4. Update DB — hold at "NDA Approval Pending" until a dashboard user approves and sends the NDA
   await pool.query(
-    "UPDATE resellers SET netsuite_vendor_id = $1, docusign_envelope_id = $2, status = $3 WHERE id = $4",
-    [netsuiteVendorId, envelopeId, "NDA Pending", resellerId]
+    "UPDATE resellers SET netsuite_vendor_id = $1, status = $2, updated_at = NOW() WHERE id = $3",
+    [netsuiteVendorId, "NDA Approval Pending", resellerId]
   );
 
-  // 6. Send internal ops alert
+  // 5. Send internal ops alert — prompts the team to review the submission in the dashboard
   await withRetry(
     () => sendInternalAlert({ legalCompanyName, contactEmail, contactFirstName, contactLastName, ein, resellerId }),
     "SendGrid sendInternalAlert"
   );
 
-  console.log(`[worker] RESELLER_SUBMITTED processed: reseller=${resellerId} ns=${netsuiteVendorId} ds=${envelopeId}`);
+  console.log(`[worker] RESELLER_SUBMITTED processed: reseller=${resellerId} ns=${netsuiteVendorId} — awaiting NDA approval`);
 }
 
 /**

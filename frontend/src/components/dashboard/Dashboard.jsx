@@ -2,11 +2,12 @@ import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 
 const STATUS_META = {
-  "Initiated":           { label: "Initiated",           bg: "bg-gray-100",    text: "text-gray-600",   dot: "bg-gray-400" },
-  "NDA Pending":         { label: "NDA Pending",         bg: "bg-amber-50",    text: "text-amber-700",  dot: "bg-amber-400" },
-  "Awaiting Countersign":{ label: "Awaiting Countersign",bg: "bg-blue-50",     text: "text-blue-700",   dot: "bg-blue-500" },
-  "NDA Complete":        { label: "NDA Complete",        bg: "bg-green-50",    text: "text-green-700",  dot: "bg-green-500" },
-  "Cancelled":           { label: "Cancelled",           bg: "bg-red-50",      text: "text-red-600",    dot: "bg-red-400" },
+  "Initiated":              { label: "Initiated",              bg: "bg-gray-100",    text: "text-gray-600",    dot: "bg-gray-400" },
+  "NDA Approval Pending":   { label: "NDA Approval Pending",   bg: "bg-violet-50",   text: "text-violet-700",  dot: "bg-violet-500" },
+  "NDA Pending":            { label: "NDA Pending",            bg: "bg-amber-50",    text: "text-amber-700",   dot: "bg-amber-400" },
+  "Awaiting Countersign":   { label: "Awaiting Countersign",   bg: "bg-blue-50",     text: "text-blue-700",    dot: "bg-blue-500" },
+  "NDA Complete":           { label: "NDA Complete",           bg: "bg-green-50",    text: "text-green-700",   dot: "bg-green-500" },
+  "Cancelled":              { label: "Cancelled",              bg: "bg-red-50",      text: "text-red-600",     dot: "bg-red-400" },
 };
 
 function StatusBadge({ status }) {
@@ -48,6 +49,8 @@ function DetailModal({ reseller, onClose, onDelete }) {
   const [cancelResult, setCancelResult] = useState(null); // "ok" | "error"
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
+  const [approving, setApproving] = useState(false);
+  const [approveResult, setApproveResult] = useState(null); // "ok" | "error"
 
   useEffect(() => {
     // Reset all action state when switching to a different reseller
@@ -57,6 +60,8 @@ function DetailModal({ reseller, onClose, onDelete }) {
     setCancelResult(null);
     setDeleting(false);
     setDeleteError(null);
+    setApproving(false);
+    setApproveResult(null);
 
     if (!reseller) return;
     setFiles(null);
@@ -103,6 +108,24 @@ function DetailModal({ reseller, onClose, onDelete }) {
       setCancelResult("error");
     } finally {
       setCancelling(false);
+    }
+  }
+
+  async function handleApproveAndSend() {
+    if (!window.confirm(`Send NDA to ${reseller.nda_signer_email || reseller.contact_email}? This will create a billable Acrobat Sign envelope.`)) return;
+    setApproving(true);
+    setApproveResult(null);
+    try {
+      await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL || ""}/api/dashboard/resellers/${reseller.id}/send-nda`,
+        {},
+        { headers: authHeaders() }
+      );
+      setApproveResult("ok");
+    } catch {
+      setApproveResult("error");
+    } finally {
+      setApproving(false);
     }
   }
 
@@ -162,6 +185,17 @@ function DetailModal({ reseller, onClose, onDelete }) {
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <StatusBadge status={reseller.status} />
             <div className="flex items-center gap-3">
+              {reseller.status === "NDA Approval Pending" && (
+                <button
+                  onClick={handleApproveAndSend}
+                  disabled={approving || approveResult === "ok"}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-violet-500 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700 hover:bg-violet-100 transition-colors disabled:opacity-50"
+                >
+                  {approving ? "Sending…" : "Approve & Send NDA"}
+                </button>
+              )}
+              {approveResult === "ok" && <span className="text-xs text-green-600 font-medium">NDA sent to reseller</span>}
+              {approveResult === "error" && <span className="text-xs text-red-500 font-medium">Failed — try again</span>}
               {canResend && (
                 <button
                   onClick={handleResend}
@@ -184,7 +218,7 @@ function DetailModal({ reseller, onClose, onDelete }) {
               {resendResult === "error" && <span className="text-xs text-red-500 font-medium">Failed — try again</span>}
               {cancelResult === "ok" && <span className="text-xs text-red-600 font-medium">Agreement cancelled</span>}
               {cancelResult === "error" && <span className="text-xs text-red-500 font-medium">Cancel failed — try again</span>}
-              {(reseller.status === "Cancelled" || reseller.status === "Initiated") && (
+              {(reseller.status === "Cancelled" || reseller.status === "Initiated" || reseller.status === "NDA Approval Pending") && (
                 <button
                   onClick={handleDelete}
                   disabled={deleting}
@@ -291,7 +325,7 @@ function DetailModal({ reseller, onClose, onDelete }) {
   );
 }
 
-const STATUSES = ["All", "Initiated", "NDA Pending", "Awaiting Countersign", "NDA Complete", "Cancelled"];
+const STATUSES = ["All", "Initiated", "NDA Approval Pending", "NDA Pending", "Awaiting Countersign", "NDA Complete", "Cancelled"];
 
 export default function Dashboard() {
   const [resellers, setResellers] = useState([]);
@@ -371,6 +405,7 @@ export default function Dashboard() {
   const counts = {
     total: resellers.length,
     initiated: resellers.filter((r) => r.status === "Initiated").length,
+    approvalPending: resellers.filter((r) => r.status === "NDA Approval Pending").length,
     ndaPending: resellers.filter((r) => r.status === "NDA Pending").length,
     awaitingCountersign: resellers.filter((r) => r.status === "Awaiting Countersign").length,
     ndaComplete: resellers.filter((r) => r.status === "NDA Complete").length,
@@ -442,9 +477,10 @@ export default function Dashboard() {
         </div>
 
         {/* Stat cards */}
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-5 mb-8">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6 mb-8">
           {[
             { label: "Total", value: counts.total, color: "text-brand-navy" },
+            { label: "Approval Pending", value: counts.approvalPending, color: "text-violet-600" },
             { label: "NDA Pending", value: counts.ndaPending, color: "text-amber-600" },
             { label: "Awaiting Countersign", value: counts.awaitingCountersign, color: "text-blue-600" },
             { label: "NDA Complete", value: counts.ndaComplete, color: "text-green-600" },
