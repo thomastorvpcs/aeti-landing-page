@@ -88,6 +88,7 @@ router.post("/resellers/:id/send-nda", async (req, res, next) => {
       contactEmail: reseller.nda_signer_email || reseller.contact_email,
       contactFirstName: reseller.nda_signer_first_name || reseller.contact_first_name,
       contactLastName: reseller.nda_signer_last_name || reseller.contact_last_name,
+      contactTitle: reseller.nda_signer_title || reseller.contact_title,
       addressCity: reseller.address_city,
       addressState: reseller.address_state,
     });

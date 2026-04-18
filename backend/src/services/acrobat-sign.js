@@ -57,6 +57,7 @@ async function sendNdaAgreement({
   contactEmail,
   contactFirstName,
   contactLastName,
+  contactTitle,
   addressCity,
   addressState,
 }) {
@@ -93,6 +94,7 @@ async function sendNdaAgreement({
       { fieldName: "CompanyAddress", defaultValue: `${addressCity}, ${addressState}` },
       { fieldName: "EffectiveDay", defaultValue: effectiveDay },
       { fieldName: "EffectiveMonth", defaultValue: effectiveMonth },
+      { fieldName: "SignerTitle", defaultValue: contactTitle || "" },
     ],
   };
 
