@@ -12,9 +12,7 @@ const dashboardRouter = require("./routes/dashboard");
 const app = express();
 app.set("trust proxy", 1);
 
-// Serve static assets FIRST — before any middleware that could interfere
-const frontendDist = path.join(__dirname, "../public");
-app.use(express.static(frontendDist));
+// Frontend is served by Azure Static Web Apps — no static file serving here
 
 // Security headers (CSP disabled — Vite assets are self-hosted)
 app.use(helmet({ contentSecurityPolicy: false }));
@@ -86,9 +84,9 @@ app.get("/admin/run-migration", async (_req, res) => {
   }
 });
 
-// SPA fallback — all unmatched routes serve index.html
-app.get("*", (_req, res) => {
-  res.sendFile(path.join(frontendDist, "index.html"));
+// 404 for any unmatched routes
+app.use((_req, res) => {
+  res.status(404).json({ error: "Not found" });
 });
 
 // Error handler
