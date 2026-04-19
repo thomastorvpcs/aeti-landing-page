@@ -1,6 +1,7 @@
 const express = require("express");
 const pool = require("../db");
 const { enqueue } = require("../services/queue");
+const { getAgreementStatus } = require("../services/acrobat-sign");
 
 const router = express.Router();
 
@@ -64,7 +65,7 @@ router.post("/", async (req, res) => {
 
   try {
     const result = await pool.query(
-      "SELECT id, contact_email, contact_first_name, contact_last_name, legal_company_name FROM resellers WHERE docusign_envelope_id = $1",
+      "SELECT id, status, contact_email, contact_first_name, contact_last_name, legal_company_name FROM resellers WHERE docusign_envelope_id = $1",
       [agreementId]
     );
 
@@ -75,7 +76,20 @@ router.post("/", async (req, res) => {
 
     const reseller = result.rows[0];
 
-    if (isFullyComplete) {
+    // If the payload doesn't confirm fully signed but the reseller is already awaiting
+    // countersign, Legal just signed — confirm via API rather than trusting the payload status
+    let fullyComplete = isFullyComplete;
+    if (!fullyComplete && isEsigned && reseller.status === "Awaiting Countersign") {
+      try {
+        const liveStatus = await getAgreementStatus(agreementId);
+        console.log(`[acrobat-webhook] Live agreement status for ${agreementId}: ${liveStatus}`);
+        fullyComplete = liveStatus === "SIGNED";
+      } catch (err) {
+        console.error(`[acrobat-webhook] Could not fetch live agreement status:`, err.message);
+      }
+    }
+
+    if (fullyComplete) {
       await pool.query(
         "UPDATE resellers SET status = $1, signed_at = NOW() WHERE id = $2",
         ["NDA Complete", reseller.id]
