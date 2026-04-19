@@ -11,17 +11,8 @@ function drawPageFooter(doc) {
   const footerY = doc.page.height - 72; // ~1 inch from bottom
   const leftX = 60;
   const rightX = pageWidth - 60;
-  const bracketSize = 8;
-
   // Horizontal rule
   doc.moveTo(leftX, footerY).lineTo(rightX, footerY).strokeColor("#aaaaaa").lineWidth(0.5).stroke();
-
-  // Corner brackets (top-left and top-right of footer)
-  doc.strokeColor("#aaaaaa").lineWidth(0.5);
-  // Top-left bracket
-  doc.moveTo(leftX, footerY - bracketSize).lineTo(leftX, footerY).lineTo(leftX + bracketSize, footerY).stroke();
-  // Top-right bracket
-  doc.moveTo(rightX - bracketSize, footerY).lineTo(rightX, footerY).lineTo(rightX, footerY - bracketSize).stroke();
 
   // Footer text
   doc
