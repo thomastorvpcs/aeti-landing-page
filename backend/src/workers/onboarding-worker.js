@@ -1,7 +1,7 @@
 require("dotenv").config();
 
 const pool = require("../db");
-const { receive, ack, enqueue } = require("../services/queue");
+const { subscribe, enqueue } = require("../services/queue");
 const { uploadFile, downloadFile } = require("../services/s3"); // downloadFile used in handleNdaCompleted
 const { downloadSignedNda, getAgreementStatus } = require("../services/acrobat-sign");
 const { createVendor, updateVendorStatus, createTask } = require("../services/netsuite");
@@ -257,48 +257,40 @@ async function pollPendingAgreements() {
 
 // ─── Main polling loop ──────────────────────────────────────────────────────────
 
-async function processMessage(msg) {
-  const { type, payload } = msg.body;
-  console.log(`[worker] Processing job: ${type}`);
-
-  switch (type) {
-    case "RESELLER_SUBMITTED":
-      await handleResellerSubmitted(payload);
-      break;
-    case "NDA_COMPLETED":
-      await handleNdaCompleted(payload);
-      break;
-    default:
-      console.warn(`[worker] Unknown job type: ${type}`);
-  }
-}
-
 async function run() {
-  console.log("[worker] Onboarding worker started. Polling SQS...");
+  console.log("[worker] Onboarding worker started. Subscribing to Service Bus queue...");
 
   // Poll Acrobat Sign every 5 minutes as fallback for missed webhook events
   pollPendingAgreements().catch(console.error);
   setInterval(() => pollPendingAgreements().catch(console.error), 5 * 60 * 1000);
 
-  while (true) {
-    let msg = null;
-    try {
-      msg = await receive();
-      if (!msg) continue; // long-poll returned empty
-
-      await processMessage(msg);
-      await ack(msg.receiptHandle);
-      console.log("[worker] Job completed and acknowledged.");
-    } catch (err) {
-      console.error("[worker] Unhandled error:", err.message);
-      // Acknowledge the message to prevent infinite retry loop.
-      // In production, route failed messages to a dead-letter queue instead.
-      if (msg) {
-        console.error("[worker] Acknowledging failed message to prevent retry loop.");
-        await ack(msg.receiptHandle);
+  subscribe(
+    async (body, ack) => {
+      const { type, payload } = body;
+      console.log(`[worker] Processing job: ${type}`);
+      try {
+        switch (type) {
+          case "RESELLER_SUBMITTED":
+            await handleResellerSubmitted(payload);
+            break;
+          case "NDA_COMPLETED":
+            await handleNdaCompleted(payload);
+            break;
+          default:
+            console.warn(`[worker] Unknown job type: ${type}`);
+        }
+        await ack();
+        console.log("[worker] Job completed and acknowledged.");
+      } catch (err) {
+        console.error(`[worker] Job ${type} failed:`, err.message);
+        // Acknowledge to prevent infinite retry loop — Service Bus dead-letters after max delivery count
+        await ack();
       }
+    },
+    async (err) => {
+      console.error("[worker] Service Bus error:", err.message);
     }
-  }
+  );
 }
 
 run().catch((err) => {

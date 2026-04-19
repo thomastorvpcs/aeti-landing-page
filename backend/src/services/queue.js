@@ -3,63 +3,43 @@ const { ServiceBusClient } = require("@azure/service-bus");
 const connectionString = process.env.AZURE_SERVICE_BUS_CONNECTION_STRING;
 const QUEUE_NAME = process.env.AZURE_SERVICE_BUS_QUEUE_NAME || "onboarding-jobs";
 
-function getClient() {
-  if (!connectionString) throw new Error("AZURE_SERVICE_BUS_CONNECTION_STRING is not set");
-  return new ServiceBusClient(connectionString);
-}
+if (!connectionString) throw new Error("AZURE_SERVICE_BUS_CONNECTION_STRING is not set");
+
+// Persistent client and sender — reused across all enqueue calls
+const _client = new ServiceBusClient(connectionString);
+const _sender = _client.createSender(QUEUE_NAME);
 
 /**
  * Enqueue a job. `type` is the job type string; `payload` is an object.
  */
 async function enqueue(type, payload) {
-  const client = getClient();
-  const sender = client.createSender(QUEUE_NAME);
-  try {
-    await sender.sendMessages({
-      body: JSON.stringify({ type, payload }),
-      applicationProperties: { jobType: type },
-    });
-  } finally {
-    await sender.close();
-    await client.close();
-  }
+  await _sender.sendMessages({
+    body: JSON.stringify({ type, payload }),
+    applicationProperties: { jobType: type },
+  });
 }
 
 /**
- * Poll for one message. Returns null if queue is empty.
+ * Subscribe to the queue with push-based message delivery.
+ * Messages are delivered instantly as they arrive — no polling delay.
+ * `processMessage` is called with each message; `processError` handles errors.
  */
-async function receive() {
-  const client = getClient();
-  const receiver = client.createReceiver(QUEUE_NAME, { receiveMode: "peekLock" });
-  try {
-    const messages = await receiver.receiveMessages(1, { maxWaitTimeInMs: 20000 });
-    if (!messages || messages.length === 0) {
-      await receiver.close();
-      await client.close();
-      return null;
-    }
-    const msg = messages[0];
-    return {
-      receiptHandle: { receiver, message: msg, client },
-      body: typeof msg.body === "string" ? JSON.parse(msg.body) : msg.body,
-    };
-  } catch (err) {
-    await receiver.close();
-    await client.close();
-    throw err;
-  }
+function subscribe(processMessage, processError) {
+  const receiver = _client.createReceiver(QUEUE_NAME, { receiveMode: "peekLock" });
+
+  receiver.subscribe({
+    processMessage: async (msg) => {
+      const body = typeof msg.body === "string" ? JSON.parse(msg.body) : msg.body;
+      await processMessage(body, async () => {
+        await receiver.completeMessage(msg);
+      });
+    },
+    processError: async (err) => {
+      await processError(err.error || err);
+    },
+  });
+
+  return receiver;
 }
 
-/**
- * Acknowledge (complete) a message after successful processing.
- */
-async function ack({ receiver, message, client }) {
-  try {
-    await receiver.completeMessage(message);
-  } finally {
-    await receiver.close();
-    await client.close();
-  }
-}
-
-module.exports = { enqueue, receive, ack };
+module.exports = { enqueue, subscribe };
