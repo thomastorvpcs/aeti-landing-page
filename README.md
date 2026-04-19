@@ -8,13 +8,27 @@ Full-stack web application for PCS reseller onboarding at `pcsww.com/aeti`.
 |---|---|
 | Frontend | React 18 + Vite + Tailwind CSS |
 | Backend API | Node.js + Express |
-| Database | PostgreSQL 16 |
-| File storage | AWS S3 (AES-256 SSE, private ACL) |
-| Async queue | AWS SQS (long-polling worker) |
-| NDA signing | DocuSign (JWT Grant, Connect webhook) |
+| Database | PostgreSQL (Azure Database for PostgreSQL) |
+| File storage | Azure Blob Storage (AES-256, private) |
+| Async queue | Azure Service Bus (push-based worker) |
+| NDA signing | Adobe Acrobat Sign (OAuth 2.0, library template) |
 | CRM/ERP | NetSuite REST API (OAuth 1.0a TBA) |
 | Email | SendGrid Dynamic Templates |
-| Local infra | LocalStack (S3 + SQS emulation) |
+
+---
+
+## Deployment
+
+| Component | Azure Service |
+|---|---|
+| Frontend | Azure Static Web Apps |
+| Backend API | Azure App Service (`abti-api`) |
+| Worker | Azure App Service (`abti-worker`) |
+| Database | Azure Database for PostgreSQL |
+| File storage | Azure Blob Storage |
+| Queue | Azure Service Bus |
+
+CI/CD is handled via GitHub Actions. Pushes to the `staging` branch deploy to the current environment.
 
 ---
 
@@ -27,6 +41,7 @@ Full-stack web application for PCS reseller onboarding at `pcsww.com/aeti`.
 │       ├── components/
 │       │   ├── layout/        # Navbar, Footer
 │       │   ├── landing/       # Hero, Revenue, Partnership, Quote, HowItWorks
+│       │   ├── dashboard/     # Dashboard, DetailModal
 │       │   └── form/          # ProgressIndicator, Step1-4, Confirmation, OnboardingForm
 │       └── App.jsx
 ├── backend/
@@ -34,12 +49,28 @@ Full-stack web application for PCS reseller onboarding at `pcsww.com/aeti`.
 │       ├── app.js             # Express app
 │       ├── server.js          # HTTP server entry point
 │       ├── db/                # PostgreSQL pool + migrations
-│       ├── middleware/        # Rate limiter, multer upload
-│       ├── routes/            # /api/submit, /docusign/webhook
-│       ├── services/          # s3, queue, docusign, netsuite, sendgrid
-│       └── workers/           # onboarding-worker.js (SQS consumer)
-└── docker-compose.yml         # PostgreSQL + LocalStack for local dev
+│       ├── middleware/        # Rate limiter, auth, multer upload
+│       ├── routes/            # /api/submit, /acrobat/webhook, /api/dashboard
+│       ├── services/          # s3, queue, acrobat-sign, netsuite, sendgrid, pdf
+│       └── workers/           # onboarding-worker.js (Service Bus consumer)
+└── docker-compose.yml         # PostgreSQL for local dev
 ```
+
+---
+
+## Reseller status flow
+
+```
+Initiated → NDA Approval Pending → NDA Pending → Awaiting Countersign → NDA Complete
+                    ↓
+                (delete)
+```
+
+- **Initiated** — form submitted, worker not yet processed
+- **NDA Approval Pending** — worker processed; awaiting dashboard approval before sending envelope
+- **NDA Pending** — Acrobat Sign envelope sent to reseller for signing
+- **Awaiting Countersign** — reseller signed; awaiting PCS Legal countersignature
+- **NDA Complete** — fully signed; welcome email with signed NDA and program letter sent
 
 ---
 
@@ -49,45 +80,35 @@ Full-stack web application for PCS reseller onboarding at `pcsww.com/aeti`.
 - Node.js 20+
 - Docker Desktop
 
-### 1. Start local infrastructure
+### 1. Start local database
 
 ```bash
 docker compose up -d
 ```
 
-This starts PostgreSQL on `:5432` and LocalStack (S3 + SQS) on `:4566`.
+This starts PostgreSQL on `:5432`.
 
-### 2. Create LocalStack resources
-
-```bash
-# Create S3 bucket
-aws --endpoint-url=http://localhost:4566 s3 mb s3://aeti-reseller-docs
-
-# Create SQS queue
-aws --endpoint-url=http://localhost:4566 sqs create-queue --queue-name aeti-onboarding
-```
-
-### 3. Install dependencies
+### 2. Install dependencies
 
 ```bash
 cd frontend && npm install
 cd ../backend && npm install
 ```
 
-### 4. Configure environment
+### 3. Configure environment
 
 ```bash
 cp backend/.env.example backend/.env
-# Edit backend/.env — fill in DocuSign, NetSuite, SendGrid credentials
+# Edit backend/.env — fill in Azure, Acrobat Sign, NetSuite, SendGrid credentials
 ```
 
-### 5. Run database migrations
+### 4. Run database migrations
 
 ```bash
 cd backend && npm run migrate
 ```
 
-### 6. Start all processes (3 terminals)
+### 5. Start all processes (3 terminals)
 
 ```bash
 # Terminal 1 — Backend API
@@ -100,57 +121,71 @@ cd frontend && npm run dev
 cd backend && npm run worker
 ```
 
-Frontend: http://localhost:3000
+Frontend: http://localhost:3000  
 Backend: http://localhost:4000
-LocalStack: http://localhost:4566
 
 ---
 
 ## Environment variables
 
-See [backend/.env.example](backend/.env.example) for all required variables with descriptions.
+See [backend/.env.example](backend/.env.example) for all required variables.
 
-### Critical configuration
+### Key groups
 
-**DocuSign**
-- Create an app in the DocuSign developer portal
-- Generate an RSA key pair — save the private key to `backend/docusign.key`
-- Grant consent to the integration key
-- Create the NDA template in DocuSign and copy the Template ID
-- Configure a DocuSign Connect webhook pointing to `https://your-domain/docusign/webhook` — copy the HMAC secret
+**Azure**
+- `AZURE_STORAGE_CONNECTION_STRING` — Blob Storage connection string
+- `AZURE_BLOB_CONTAINER` — container name (default: `reseller-docs`)
+- `AZURE_SERVICE_BUS_CONNECTION_STRING` — Service Bus connection string
+- `AZURE_SERVICE_BUS_QUEUE_NAME` — queue name (default: `onboarding-jobs`)
+
+**Database**
+- `DATABASE_URL` — PostgreSQL connection string
+
+**Acrobat Sign**
+- `ACROBAT_CLIENT_ID` / `ACROBAT_CLIENT_SECRET` — OAuth 2.0 app credentials
+- `ACROBAT_REFRESH_TOKEN` — long-lived refresh token
+- `ACROBAT_NDA_TEMPLATE_ID` — library document ID for the NDA template
+- `ACROBAT_API_BASE_URL` — API base (default: `https://api.na1.adobesign.com`)
+- `PCS_LEGAL_EMAIL` / `PCS_LEGAL_NAME` — countersigner details
 
 **NetSuite**
-- Enable Token-Based Authentication in NetSuite setup
-- Create an integration record and generate consumer key/secret
-- Create a token and note the token ID/secret
-- Create the custom field `custentity_onboarding_status` on the Vendor record
+- `NETSUITE_ACCOUNT_ID`, `NETSUITE_CONSUMER_KEY`, `NETSUITE_CONSUMER_SECRET`
+- `NETSUITE_TOKEN_ID`, `NETSUITE_TOKEN_SECRET`
+- `NETSUITE_FINANCE_EMPLOYEE_ID`, `NETSUITE_LEGAL_EMPLOYEE_ID` — task assignees (optional)
 
 **SendGrid**
-- Create two Dynamic Templates: welcome email (with NDA attachment) and internal ops alert
-- Add the template IDs to `.env`
+- `SENDGRID_API_KEY`
+- `SENDGRID_FROM_EMAIL`, `SENDGRID_FROM_NAME`, `SENDGRID_SUPPORT_EMAIL`
+- `SENDGRID_TEMPLATE_WELCOME`, `SENDGRID_TEMPLATE_INTERNAL_ALERT` — dynamic template IDs
 
----
-
-## Deployment notes
-
-- Remove `AWS_ENDPOINT` from production env — the SDK will use real AWS endpoints
-- Use IAM roles instead of access keys in production
-- Set `DOCUSIGN_BASE_PATH` to the production DocuSign URL
-- Enable column-level encryption for the `ein` field using pgcrypto or AWS KMS
-- Place the backend behind a reverse proxy (nginx/ALB) with TLS termination
-- Set up a dead-letter queue for the SQS queue to catch repeatedly failing jobs
+**Internal routing**
+- `PCS_OPS_EMAIL` — receives internal alert on each new submission
 
 ---
 
 ## API reference
 
 ### `POST /api/submit`
-Accepts `multipart/form-data`. Fields map to the data model in the PRD. Required: all Step 1 + Step 2 fields plus the `w9` file.
+Accepts `multipart/form-data`. Required: all Step 1 + Step 2 fields plus the `w9` file.  
+Returns `202 Accepted`. All integration work (NetSuite, Acrobat Sign, email) happens asynchronously in the worker.
 
-Returns `202 Accepted` on success. Downstream processing (DocuSign, NetSuite, SendGrid) happens asynchronously.
+### `POST /acrobat/webhook`
+Acrobat Sign event callback. On `AGREEMENT_WORKFLOW_COMPLETED` events, updates reseller status and enqueues `NDA_COMPLETED`.
 
-### `POST /docusign/webhook`
-DocuSign Connect callback. Verifies HMAC-SHA256 signature before processing. On `envelope-completed` events, enqueues the `NDA_COMPLETED` job.
+### `GET /api/dashboard/resellers`
+Returns all resellers ordered by submission date. Requires dashboard JWT auth.
+
+### `POST /api/dashboard/resellers/:id/send-nda`
+Approves and sends the Acrobat Sign NDA envelope. Only valid when status is `NDA Approval Pending`.
+
+### `POST /api/dashboard/resellers/:id/resend-nda`
+Sends a reminder to the reseller (`NDA Pending`) or PCS Legal (`Awaiting Countersign`).
+
+### `POST /api/dashboard/resellers/:id/cancel-nda`
+Cancels the in-progress agreement and sets status to `Cancelled`.
+
+### `DELETE /api/dashboard/resellers/:id`
+Deletes the reseller record and all associated blob files. Only allowed for `Cancelled`, `Initiated`, and `NDA Approval Pending` statuses.
 
 ### `GET /health`
 Returns `{ status: "ok" }`.
