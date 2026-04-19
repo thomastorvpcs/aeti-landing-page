@@ -71,6 +71,16 @@ async function getPresignedUrl(key, expiresInSeconds = 3600) {
 }
 
 /**
+ * Return true if a blob exists in storage.
+ */
+async function blobExists(key) {
+  const client = getClient();
+  const containerClient = client.getContainerClient(CONTAINER);
+  const blockBlobClient = containerClient.getBlockBlobClient(key);
+  return blockBlobClient.exists();
+}
+
+/**
  * Delete a single blob.
  */
 async function deleteFile(key) {
@@ -90,4 +100,4 @@ async function deleteFolder(prefix) {
   }
 }
 
-module.exports = { uploadFile, downloadFile, getPresignedUrl, deleteFile, deleteFolder };
+module.exports = { uploadFile, downloadFile, getPresignedUrl, blobExists, deleteFile, deleteFolder };

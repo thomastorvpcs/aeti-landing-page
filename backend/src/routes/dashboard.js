@@ -1,6 +1,6 @@
 const express = require("express");
 const pool = require("../db");
-const { getPresignedUrl, deleteFolder } = require("../services/s3");
+const { getPresignedUrl, blobExists, deleteFolder } = require("../services/s3");
 const { sendReminder, cancelAgreement, sendNdaAgreement } = require("../services/acrobat-sign");
 const requireDashboardAuth = require("../middleware/requireDashboardAuth");
 
@@ -56,7 +56,7 @@ router.get("/resellers/:id/files", async (req, res, next) => {
     const [w9Url, bankLetterUrl, vendorFormUrl, signedNdaUrl] = await Promise.all([
       w9_s3_key ? getPresignedUrl(w9_s3_key, 300) : null,
       bank_letter_s3_key ? getPresignedUrl(bank_letter_s3_key, 300) : null,
-      getPresignedUrl(vendorFormKey, 300).catch(() => null),
+      blobExists(vendorFormKey).then((exists) => exists ? getPresignedUrl(vendorFormKey, 300) : null),
       signed_nda_s3_key ? getPresignedUrl(signed_nda_s3_key, 300) : null,
     ]);
 
