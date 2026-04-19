@@ -6,6 +6,39 @@ const LETTERHEAD_PATH = path.join(__dirname, "../assets/PCSletterhead.jpg");
 /**
  * Generate the PCS Wireless Authorized Reseller letter as a PDF buffer.
  */
+function drawPageFooter(doc) {
+  const pageWidth = doc.page.width;
+  const footerY = doc.page.height - 72; // ~1 inch from bottom
+  const leftX = 60;
+  const rightX = pageWidth - 60;
+  const bracketSize = 8;
+
+  // Horizontal rule
+  doc.moveTo(leftX, footerY).lineTo(rightX, footerY).strokeColor("#aaaaaa").lineWidth(0.5).stroke();
+
+  // Corner brackets (top-left and top-right of footer)
+  doc.strokeColor("#aaaaaa").lineWidth(0.5);
+  // Top-left bracket
+  doc.moveTo(leftX, footerY - bracketSize).lineTo(leftX, footerY).lineTo(leftX + bracketSize, footerY).stroke();
+  // Top-right bracket
+  doc.moveTo(rightX - bracketSize, footerY).lineTo(rightX, footerY).lineTo(rightX, footerY - bracketSize).stroke();
+
+  // Footer text
+  doc
+    .fontSize(7.5)
+    .font("Helvetica")
+    .fillColor("#555555")
+    .text(
+      "Phone: +1 973.805.7400   |   Fax: +1 973.301.0975   |   11 Vreeland Road, Florham Park, NJ 07932   |   www.pcsww.com",
+      leftX,
+      footerY + 6,
+      { width: rightX - leftX, align: "center" }
+    );
+
+  // Reset color
+  doc.fillColor("#000000").strokeColor("#000000").lineWidth(1);
+}
+
 function generateAuthorizationLetter({ legalCompanyName }) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ margin: 60, size: "letter" });
@@ -51,6 +84,7 @@ function generateAuthorizationLetter({ legalCompanyName }) {
     doc.text("CEO");
     doc.text("PCS Wireless LLC");
 
+    drawPageFooter(doc);
     doc.end();
   });
 }
