@@ -39,7 +39,7 @@ async function sendWelcomeEmail({
   const attachments = [
     {
       content: signedNdaPdf.toString("base64"),
-      filename: "AETI_NDA_Signed.pdf",
+      filename: "ABTI_NDA_Signed.pdf",
       type: "application/pdf",
       disposition: "attachment",
     },
@@ -48,7 +48,7 @@ async function sendWelcomeEmail({
   if (programLetterPdf) {
     attachments.push({
       content: programLetterPdf.toString("base64"),
-      filename: "AETI_Reseller_Program_Letter.pdf",
+      filename: "ABTI_Reseller_Program_Letter.pdf",
       type: "application/pdf",
       disposition: "attachment",
     });
