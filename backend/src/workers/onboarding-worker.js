@@ -1,5 +1,6 @@
 require("dotenv").config();
 
+const http = require("http");
 const pool = require("../db");
 const { subscribe, enqueue } = require("../services/queue");
 const { uploadFile, downloadFile } = require("../services/s3"); // downloadFile used in handleNdaCompleted
@@ -357,6 +358,16 @@ async function run() {
     process.exit(1);
   });
 }
+
+// Health check server — keeps Azure App Service from treating the worker
+// as a crashed app due to no HTTP listener on the expected port.
+const PORT = process.env.PORT || 8080;
+http.createServer((req, res) => {
+  res.writeHead(200, { "Content-Type": "application/json" });
+  res.end(JSON.stringify({ status: "ok", worker: "onboarding-worker" }));
+}).listen(PORT, () => {
+  console.log(`[worker] Health check server listening on port ${PORT}`);
+});
 
 run().catch((err) => {
   console.error("[worker] Fatal error:", err);
