@@ -32,7 +32,7 @@ function drawPageFooter(doc) {
 
 function generateAuthorizationLetter({ legalCompanyName }) {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 60, size: "letter" });
+    const doc = new PDFDocument({ margin: 60, size: "letter", bufferPages: true });
     const chunks = [];
 
     doc.on("data", (chunk) => chunks.push(chunk));
@@ -41,7 +41,7 @@ function generateAuthorizationLetter({ legalCompanyName }) {
 
     // Letterhead image centered at top
     doc.image(LETTERHEAD_PATH, 60, 40, { width: 492, align: "center" });
-    doc.moveDown(6);
+    doc.moveDown(3);
 
     // Date
     const today = new Date();
@@ -70,12 +70,15 @@ function generateAuthorizationLetter({ legalCompanyName }) {
 
     // Closing
     doc.text("Sincerely,");
-    doc.moveDown(3);
+    doc.moveDown(2);
     doc.text("Chaim T. Nash");
     doc.text("CEO");
     doc.text("PCS Wireless LLC");
 
+    // Always draw the footer on page 1, regardless of where the content cursor ended up
+    doc.switchToPage(0);
     drawPageFooter(doc);
+    doc.flushPages();
     doc.end();
   });
 }
