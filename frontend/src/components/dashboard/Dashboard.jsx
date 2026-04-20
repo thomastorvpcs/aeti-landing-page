@@ -359,7 +359,6 @@ function DetailModal({ reseller, onClose, onDelete }) {
   );
 }
 
-const STATUSES = ["All", "Initiated", "NDA Approval Pending", "NDA Pending", "Awaiting Countersign", "NDA Processing", "NDA Complete", "Cancelled"];
 
 export default function Dashboard() {
   const [resellers, setResellers] = useState([]);
@@ -511,26 +510,37 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Stat cards */}
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-7 mb-8">
+        {/* Stat cards — click to filter */}
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-7 mb-6">
           {[
-            { label: "Total", value: counts.total, color: "text-brand-navy" },
-            { label: "Approval Pending", value: counts.approvalPending, color: "text-violet-600" },
-            { label: "NDA Pending", value: counts.ndaPending, color: "text-amber-600" },
-            { label: "Awaiting Countersign", value: counts.awaitingCountersign, color: "text-blue-600" },
-            { label: "NDA Processing", value: counts.ndaProcessing, color: "text-teal-600" },
-            { label: "NDA Complete", value: counts.ndaComplete, color: "text-green-600" },
-            { label: "Cancelled", value: counts.cancelled, color: "text-red-500" },
-          ].map(({ label, value, color }) => (
-            <div key={label} className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
-              <p className="text-xs font-medium text-gray-500">{label}</p>
-              <p className={`text-3xl font-extrabold mt-1 ${color}`}>{loading ? "—" : value}</p>
-            </div>
-          ))}
+            { label: "Total", filter: "All", value: counts.total, color: "text-brand-navy", ring: "ring-brand-navy" },
+            { label: "Approval Pending", filter: "NDA Approval Pending", value: counts.approvalPending, color: "text-violet-600", ring: "ring-violet-400" },
+            { label: "NDA Pending", filter: "NDA Pending", value: counts.ndaPending, color: "text-amber-600", ring: "ring-amber-400" },
+            { label: "Awaiting Countersign", filter: "Awaiting Countersign", value: counts.awaitingCountersign, color: "text-blue-600", ring: "ring-blue-400" },
+            { label: "NDA Processing", filter: "NDA Processing", value: counts.ndaProcessing, color: "text-teal-600", ring: "ring-teal-400" },
+            { label: "NDA Complete", filter: "NDA Complete", value: counts.ndaComplete, color: "text-green-600", ring: "ring-green-400" },
+            { label: "Cancelled", filter: "Cancelled", value: counts.cancelled, color: "text-red-500", ring: "ring-red-400" },
+          ].map(({ label, filter, value, color, ring }) => {
+            const active = statusFilter === filter;
+            return (
+              <button
+                key={label}
+                onClick={() => setStatusFilter(active ? "All" : filter)}
+                className={`text-left bg-white rounded-2xl border shadow-sm px-5 py-4 transition-all ${
+                  active
+                    ? `border-transparent ring-2 ${ring} shadow-md`
+                    : "border-gray-100 hover:border-gray-200 hover:shadow-md"
+                }`}
+              >
+                <p className="text-xs font-medium text-gray-500">{label}</p>
+                <p className={`text-3xl font-extrabold mt-1 ${color}`}>{loading ? "—" : value}</p>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-5">
+        {/* Search */}
+        <div className="mb-5">
           <input
             type="text"
             placeholder="Search company, email or EIN…"
@@ -538,21 +548,6 @@ export default function Dashboard() {
             onChange={(e) => setSearch(e.target.value)}
             className="form-input max-w-xs"
           />
-          <div className="flex flex-wrap gap-2">
-            {STATUSES.map((s) => (
-              <button
-                key={s}
-                onClick={() => setStatusFilter(s)}
-                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-all ${
-                  statusFilter === s
-                    ? "bg-brand-blue text-white"
-                    : "bg-white border border-gray-200 text-gray-600 hover:border-brand-blue"
-                }`}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
         </div>
 
         {/* Table */}
