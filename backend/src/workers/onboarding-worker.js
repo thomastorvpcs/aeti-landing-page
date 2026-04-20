@@ -316,9 +316,9 @@ async function run() {
   pollPendingAgreements().catch(console.error);
   setInterval(() => pollPendingAgreements().catch(console.error), 5 * 60 * 1000);
 
-  // Poll for stuck submissions every 2 minutes as fallback for dropped push subscriptions
+  // Poll for stuck submissions every 10 minutes as fallback for dropped push subscriptions
   pollStuckSubmissions().catch(console.error);
-  setInterval(() => pollStuckSubmissions().catch(console.error), 2 * 60 * 1000);
+  setInterval(() => pollStuckSubmissions().catch(console.error), 10 * 60 * 1000);
 
   subscribe(
     async (body, ack) => {
