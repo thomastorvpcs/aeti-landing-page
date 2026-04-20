@@ -27,8 +27,21 @@ async function subscribe(processMessage, processError) {
   const receiver = _client.createReceiver(QUEUE_NAME, { receiveMode: "peekLock" });
   console.log("[queue] Service Bus polling receiver started");
 
+  let lastIterationAt = Date.now();
+
+  // Watchdog: if receiveMessages() hangs (stale AMQP connection), exit so Azure restarts the worker
+  const watchdog = setInterval(() => {
+    const staleSec = Math.floor((Date.now() - lastIterationAt) / 1000);
+    if (staleSec > 5 * 60) {
+      console.error(`[queue] Watchdog: polling loop stale for ${staleSec}s — exiting to force restart`);
+      process.exit(1);
+    }
+    console.log(`[queue] Watchdog: loop healthy, last iteration ${staleSec}s ago`);
+  }, 30 * 1000);
+
   while (true) {
     try {
+      lastIterationAt = Date.now();
       const messages = await receiver.receiveMessages(1, { maxWaitTimeInMs: 5000 });
 
       if (messages.length === 0) continue;

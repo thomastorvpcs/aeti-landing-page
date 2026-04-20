@@ -283,6 +283,7 @@ async function pollStuckSubmissions() {
      WHERE status = 'Initiated' AND created_at < NOW() - INTERVAL '2 minutes'`
   );
 
+  console.log(`[worker] pollStuckSubmissions: ${rows.length} stuck record(s)`);
   if (rows.length === 0) return;
   console.log(`[worker] Found ${rows.length} stuck submission(s) — re-enqueuing...`);
 
