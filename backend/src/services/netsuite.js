@@ -146,7 +146,7 @@ async function createVendor(reseller) {
     submissionDate,
   };
 
-  console.log("[netsuite] createVendor:", legalCompanyName, ein);
+  console.error("[netsuite] createVendor payload:", JSON.stringify(payload, null, 2));
 
   const response = await restletRequest(payload);
   const data = response.data;
