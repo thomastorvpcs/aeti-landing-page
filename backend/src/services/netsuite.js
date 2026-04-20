@@ -66,12 +66,12 @@ function buildAuthHeader(method, url) {
 }
 
 function restletRequest(body) {
+  console.error("[netsuite] RESTLET_URL:", RESTLET_URL);
+  console.error("[netsuite] ACCOUNT_ID_REALM:", ACCOUNT_ID_REALM);
+  console.error("[netsuite] Consumer key (first 8):", process.env.NETSUITE_CONSUMER_KEY?.slice(0, 8));
+  console.error("[netsuite] Token ID (first 8):", process.env.NETSUITE_TOKEN_ID?.slice(0, 8));
   const auth = buildAuthHeader("POST", RESTLET_URL);
-  console.log("[netsuite] RESTLET_URL:", RESTLET_URL);
-  console.log("[netsuite] ACCOUNT_ID_REALM:", ACCOUNT_ID_REALM);
-  console.log("[netsuite] Consumer key (first 8):", process.env.NETSUITE_CONSUMER_KEY?.slice(0, 8));
-  console.log("[netsuite] Token ID (first 8):", process.env.NETSUITE_TOKEN_ID?.slice(0, 8));
-  console.log("[netsuite] Auth header:", auth);
+  console.error("[netsuite] Auth header:", auth);
   return axios.post(RESTLET_URL, body, {
     headers: {
       Authorization: auth,
