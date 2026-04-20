@@ -266,6 +266,45 @@ async function pollPendingAgreements() {
   }
 }
 
+// ─── Stuck submission polling ───────────────────────────────────────────────────
+
+/**
+ * Poll for resellers stuck in "Initiated" for more than 2 minutes.
+ * These are form submissions whose RESELLER_SUBMITTED job was never picked up
+ * by the push subscription. Re-enqueuing ensures they are always processed
+ * even when the Service Bus push subscription silently drops.
+ */
+async function pollStuckSubmissions() {
+  const { rows } = await pool.query(
+    `SELECT id, legal_company_name, contact_email, contact_first_name, contact_last_name,
+            ein, nda_signer_first_name, nda_signer_last_name, nda_signer_email
+     FROM resellers
+     WHERE status = 'Initiated' AND created_at < NOW() - INTERVAL '2 minutes'`
+  );
+
+  if (rows.length === 0) return;
+  console.log(`[worker] Found ${rows.length} stuck submission(s) — re-enqueuing...`);
+
+  for (const reseller of rows) {
+    try {
+      await enqueue("RESELLER_SUBMITTED", {
+        resellerId: reseller.id,
+        legalCompanyName: reseller.legal_company_name,
+        contactEmail: reseller.contact_email,
+        contactFirstName: reseller.contact_first_name,
+        contactLastName: reseller.contact_last_name,
+        ein: reseller.ein,
+        ndaSignerFirstName: reseller.nda_signer_first_name,
+        ndaSignerLastName: reseller.nda_signer_last_name,
+        ndaSignerEmail: reseller.nda_signer_email,
+      });
+      console.log(`[worker] Re-enqueued RESELLER_SUBMITTED for stuck reseller=${reseller.id}`);
+    } catch (err) {
+      console.error(`[worker] Failed to re-enqueue reseller ${reseller.id}:`, err.message);
+    }
+  }
+}
+
 // ─── Main polling loop ──────────────────────────────────────────────────────────
 
 async function run() {
@@ -274,6 +313,10 @@ async function run() {
   // Poll Acrobat Sign every 5 minutes as fallback for missed webhook events
   pollPendingAgreements().catch(console.error);
   setInterval(() => pollPendingAgreements().catch(console.error), 5 * 60 * 1000);
+
+  // Poll for stuck submissions every 2 minutes as fallback for dropped push subscriptions
+  pollStuckSubmissions().catch(console.error);
+  setInterval(() => pollStuckSubmissions().catch(console.error), 2 * 60 * 1000);
 
   subscribe(
     async (body, ack) => {

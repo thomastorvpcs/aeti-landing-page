@@ -68,16 +68,16 @@ function subscribe(processMessage, processError) {
 
   function startWatchdog() {
     if (watchdogTimer) clearInterval(watchdogTimer);
-    // Check every 2 minutes. If nothing has happened in 4 minutes, recreate the receiver.
-    // The polling loop runs every 5 minutes so legitimate quiet periods exist,
-    // but a silent subscription beyond 4 minutes is a sign it has dropped.
+    // Check every 30 seconds. If nothing has happened in 90 seconds, recreate the receiver.
+    // The SDK can silently stop delivering messages without firing processError,
+    // so we can't rely on error events alone.
     watchdogTimer = setInterval(() => {
       const silentMs = Date.now() - lastActivityAt;
-      if (silentMs > 4 * 60 * 1000) {
+      if (silentMs > 90 * 1000) {
         console.warn(`[queue] Watchdog: no activity for ${Math.round(silentMs / 1000)}s — recreating Service Bus subscription`);
         start();
       }
-    }, 2 * 60 * 1000);
+    }, 30 * 1000);
   }
 
   start();
