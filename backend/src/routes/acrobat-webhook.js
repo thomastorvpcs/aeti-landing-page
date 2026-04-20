@@ -90,15 +90,17 @@ router.post("/", async (req, res) => {
     }
 
     if (fullyComplete) {
-      if (reseller.status === "NDA Complete") {
+      // Atomic update — only succeeds if status is not already NDA Complete.
+      // Prevents duplicate enqueues when two webhook events arrive simultaneously.
+      const updated = await pool.query(
+        "UPDATE resellers SET status = $1, signed_at = NOW() WHERE id = $2 AND status != 'NDA Complete' RETURNING id",
+        ["NDA Complete", reseller.id]
+      );
+
+      if (updated.rowCount === 0) {
         console.log(`[acrobat-webhook] Reseller ${reseller.id} already NDA Complete — skipping duplicate event`);
         return;
       }
-
-      await pool.query(
-        "UPDATE resellers SET status = $1, signed_at = NOW() WHERE id = $2",
-        ["NDA Complete", reseller.id]
-      );
 
       await enqueue("NDA_COMPLETED", {
         resellerId: reseller.id,

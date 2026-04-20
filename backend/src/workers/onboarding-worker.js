@@ -136,6 +136,13 @@ async function handleNdaCompleted(payload) {
   if (!rows.length) throw new Error(`Reseller ${resellerId} not found`);
   const reseller = rows[0];
 
+  // Idempotency guard — if the signed NDA is already uploaded a previous job
+  // completed successfully. Skip to avoid sending duplicate welcome emails.
+  if (reseller.signed_nda_s3_key) {
+    console.log(`[worker] NDA_COMPLETED already processed for reseller=${resellerId} — skipping duplicate job`);
+    return;
+  }
+
   // 1. Download signed NDA from Acrobat Sign.
   // Wait 20s first — Acrobat Sign needs time to finalise the combined document
   // after the workflow-completed event before it's available for download.
