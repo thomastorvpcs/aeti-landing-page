@@ -167,7 +167,13 @@ async function sendReminder(agreementId, participantLabel) {
   const membersRes = await client.get(`/agreements/${agreementId}/members`);
   const participantSets = membersRes.data.participantSets || [];
 
-  const targetSet = participantSets.find((s) => s.label === participantLabel);
+  // Acrobat Sign does not always return the label in the members response,
+  // so fall back to matching by order: Reseller = order 1, PCSLegal = order 2
+  const expectedOrder = participantLabel === "Reseller" ? 1 : 2;
+  const targetSet =
+    participantSets.find((s) => s.label === participantLabel) ||
+    participantSets.find((s) => s.order === expectedOrder);
+
   if (!targetSet) throw new Error(`Participant set "${participantLabel}" not found in agreement ${agreementId}`);
 
   const participantIds = targetSet.memberInfos.map((m) => m.id);
