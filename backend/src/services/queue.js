@@ -5,7 +5,6 @@ const QUEUE_NAME = process.env.AZURE_SERVICE_BUS_QUEUE_NAME || "onboarding-jobs"
 
 if (!connectionString) throw new Error("AZURE_SERVICE_BUS_CONNECTION_STRING is not set");
 
-// Persistent client and sender — reused across all enqueue calls
 const _client = new ServiceBusClient(connectionString);
 const _sender = _client.createSender(QUEUE_NAME);
 
@@ -20,68 +19,39 @@ async function enqueue(type, payload) {
 }
 
 /**
- * Subscribe to the queue with push-based message delivery.
- * Includes a watchdog that recreates the receiver if it goes silent —
- * the Azure Service Bus SDK can silently stop delivering messages without
- * calling processError, so we can't rely on error events alone.
+ * Poll the Service Bus queue for messages.
+ * Runs in a tight loop with a short sleep between polls.
+ * More reliable than push-based subscribe() which silently drops connections.
  */
-function subscribe(processMessage, processError) {
-  let receiver;
-  let lastActivityAt = Date.now();
-  let watchdogTimer;
+async function subscribe(processMessage, processError) {
+  const receiver = _client.createReceiver(QUEUE_NAME, { receiveMode: "peekLock" });
+  console.log("[queue] Service Bus polling receiver started");
 
-  function start() {
-    if (receiver) {
-      receiver.close().catch(() => {});
-    }
+  while (true) {
+    try {
+      const messages = await receiver.receiveMessages(1, { maxWaitTimeInMs: 5000 });
 
-    receiver = _client.createReceiver(QUEUE_NAME, { receiveMode: "peekLock" });
+      if (messages.length === 0) continue;
 
-    receiver.subscribe({
-      processMessage: async (msg) => {
-        lastActivityAt = Date.now();
-        const body = typeof msg.body === "string" ? JSON.parse(msg.body) : msg.body;
+      const msg = messages[0];
+      const body = typeof msg.body === "string" ? JSON.parse(msg.body) : msg.body;
+
+      try {
         await processMessage(body, async () => {
           await receiver.completeMessage(msg);
         });
-      },
-      processError: async (err) => {
-        const error = err.error || err;
-        console.error("[queue] Service Bus error — reconnecting in 10s:", error.message);
-        scheduleRestart(10000);
-        await processError(error);
-      },
-    });
-
-    lastActivityAt = Date.now();
-    console.log("[queue] Service Bus subscription active");
-  }
-
-  function scheduleRestart(delayMs) {
-    if (watchdogTimer) clearInterval(watchdogTimer);
-    setTimeout(() => {
-      console.log("[queue] Restarting Service Bus subscription...");
-      start();
-      startWatchdog();
-    }, delayMs);
-  }
-
-  function startWatchdog() {
-    if (watchdogTimer) clearInterval(watchdogTimer);
-    // Check every 30 seconds. If nothing has happened in 90 seconds, recreate the receiver.
-    // The SDK can silently stop delivering messages without firing processError,
-    // so we can't rely on error events alone.
-    watchdogTimer = setInterval(() => {
-      const silentMs = Date.now() - lastActivityAt;
-      if (silentMs > 90 * 1000) {
-        console.warn(`[queue] Watchdog: no activity for ${Math.round(silentMs / 1000)}s — recreating Service Bus subscription`);
-        start();
+      } catch (err) {
+        // Processing failed — abandon so Service Bus redelivers (up to max delivery count)
+        await receiver.abandonMessage(msg).catch(() => {});
+        await processError(err);
       }
-    }, 30 * 1000);
+    } catch (err) {
+      // Receiver error (connection drop etc.) — wait and retry
+      console.error("[queue] Service Bus receive error — retrying in 5s:", err.message);
+      await processError(err).catch(() => {});
+      await new Promise((r) => setTimeout(r, 5000));
+    }
   }
-
-  start();
-  startWatchdog();
 }
 
 module.exports = { enqueue, subscribe };

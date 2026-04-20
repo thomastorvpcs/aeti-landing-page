@@ -352,7 +352,10 @@ async function run() {
     async (err) => {
       console.error("[worker] Service Bus error:", err.message);
     }
-  );
+  ).catch((err) => {
+    console.error("[worker] Service Bus polling loop exited unexpectedly:", err.message);
+    process.exit(1);
+  });
 }
 
 run().catch((err) => {
