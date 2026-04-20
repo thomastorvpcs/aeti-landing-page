@@ -23,21 +23,27 @@ function buildAuthHeader(method, url) {
   const nonce = crypto.randomBytes(16).toString("hex");
   const timestamp = Math.floor(Date.now() / 1000).toString();
 
+  // Parse query params from the URL — OAuth 1.0a requires them in the
+  // signature parameter set, sorted together with the oauth_* params.
+  const [baseUrl, queryString] = url.split("?");
+  const queryParams = queryString
+    ? queryString.split("&").map((p) => decodeURIComponent(p))
+    : [];
+
+  const allParams = [
+    `oauth_consumer_key=${process.env.NETSUITE_CONSUMER_KEY}`,
+    `oauth_nonce=${nonce}`,
+    `oauth_signature_method=HMAC-SHA256`,
+    `oauth_timestamp=${timestamp}`,
+    `oauth_token=${process.env.NETSUITE_TOKEN_ID}`,
+    `oauth_version=1.0`,
+    ...queryParams,
+  ].sort().join("&");
+
   const signatureBaseString = [
     method.toUpperCase(),
-    encodeURIComponent(url.split("?")[0]),
-    encodeURIComponent(
-      [
-        `oauth_consumer_key=${process.env.NETSUITE_CONSUMER_KEY}`,
-        `oauth_nonce=${nonce}`,
-        `oauth_signature_method=HMAC-SHA256`,
-        `oauth_timestamp=${timestamp}`,
-        `oauth_token=${process.env.NETSUITE_TOKEN_ID}`,
-        `oauth_version=1.0`,
-      ]
-        .sort()
-        .join("&")
-    ),
+    encodeURIComponent(baseUrl),
+    encodeURIComponent(allParams),
   ].join("&");
 
   const signingKey = `${encodeURIComponent(process.env.NETSUITE_CONSUMER_SECRET)}&${encodeURIComponent(process.env.NETSUITE_TOKEN_SECRET)}`;
