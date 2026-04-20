@@ -136,10 +136,14 @@ async function handleNdaCompleted(payload) {
   if (!rows.length) throw new Error(`Reseller ${resellerId} not found`);
   const reseller = rows[0];
 
-  // 1. Download signed NDA from DocuSign
+  // 1. Download signed NDA from Acrobat Sign.
+  // Wait 20s first — Acrobat Sign needs time to finalise the combined document
+  // after the workflow-completed event before it's available for download.
+  console.log("[worker] Waiting 20s for Acrobat Sign to finalise combined document...");
+  await sleep(20000);
   const signedNdaPdf = await withRetry(
     () => downloadSignedNda(envelopeId),
-    "DocuSign downloadSignedNda"
+    "Acrobat Sign downloadSignedNda"
   );
 
   // 2. Archive to S3
@@ -283,6 +287,14 @@ async function run() {
         console.log("[worker] Job completed and acknowledged.");
       } catch (err) {
         console.error(`[worker] Job ${type} failed:`, err.message);
+        if (type === "NDA_COMPLETED") {
+          // Alert ops so the welcome email can be manually re-triggered from the dashboard
+          sendInternalAlert({
+            legalCompanyName: payload.legalCompanyName || "Unknown",
+            resellerId: payload.resellerId,
+            note: `NDA_COMPLETED job failed for reseller ${payload.resellerId} (${payload.legalCompanyName}) — welcome email was NOT sent. Use the dashboard to re-trigger. Error: ${err.message}`,
+          }).catch(() => {});
+        }
         // Acknowledge to prevent infinite retry loop — Service Bus dead-letters after max delivery count
         await ack();
       }

@@ -51,6 +51,8 @@ function DetailModal({ reseller, onClose, onDelete }) {
   const [deleteError, setDeleteError] = useState(null);
   const [approving, setApproving] = useState(false);
   const [approveResult, setApproveResult] = useState(null); // "ok" | "error"
+  const [retrying, setRetrying] = useState(false);
+  const [retryResult, setRetryResult] = useState(null); // "ok" | "error"
 
   useEffect(() => {
     // Reset all action state when switching to a different reseller
@@ -62,6 +64,8 @@ function DetailModal({ reseller, onClose, onDelete }) {
     setDeleteError(null);
     setApproving(false);
     setApproveResult(null);
+    setRetrying(false);
+    setRetryResult(null);
 
     if (!reseller) return;
     setFiles(null);
@@ -108,6 +112,24 @@ function DetailModal({ reseller, onClose, onDelete }) {
       setCancelResult("error");
     } finally {
       setCancelling(false);
+    }
+  }
+
+  async function handleRetryCompletion() {
+    if (!window.confirm("Re-queue the NDA completion job? This will re-download the signed NDA and resend the welcome email.")) return;
+    setRetrying(true);
+    setRetryResult(null);
+    try {
+      await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL || ""}/api/dashboard/resellers/${reseller.id}/retry-completion`,
+        {},
+        { headers: authHeaders() }
+      );
+      setRetryResult("ok");
+    } catch {
+      setRetryResult("error");
+    } finally {
+      setRetrying(false);
     }
   }
 
@@ -218,6 +240,17 @@ function DetailModal({ reseller, onClose, onDelete }) {
               {resendResult === "error" && <span className="text-xs text-red-500 font-medium">Failed — try again</span>}
               {cancelResult === "ok" && <span className="text-xs text-red-600 font-medium">Agreement cancelled</span>}
               {cancelResult === "error" && <span className="text-xs text-red-500 font-medium">Cancel failed — try again</span>}
+              {reseller.status === "NDA Complete" && files && !files.signedNda && (
+                <button
+                  onClick={handleRetryCompletion}
+                  disabled={retrying || retryResult === "ok"}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-amber-400 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-100 transition-colors disabled:opacity-50"
+                >
+                  {retrying ? "Queuing…" : "Retry welcome email"}
+                </button>
+              )}
+              {retryResult === "ok" && <span className="text-xs text-green-600 font-medium">Queued — email will arrive shortly</span>}
+              {retryResult === "error" && <span className="text-xs text-red-500 font-medium">Failed — try again</span>}
               {(reseller.status === "Cancelled" || reseller.status === "Initiated" || reseller.status === "NDA Approval Pending") && (
                 <button
                   onClick={handleDelete}

@@ -90,6 +90,11 @@ router.post("/", async (req, res) => {
     }
 
     if (fullyComplete) {
+      if (reseller.status === "NDA Complete") {
+        console.log(`[acrobat-webhook] Reseller ${reseller.id} already NDA Complete — skipping duplicate event`);
+        return;
+      }
+
       await pool.query(
         "UPDATE resellers SET status = $1, signed_at = NOW() WHERE id = $2",
         ["NDA Complete", reseller.id]

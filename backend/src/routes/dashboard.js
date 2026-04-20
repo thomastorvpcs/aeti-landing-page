@@ -2,6 +2,7 @@ const express = require("express");
 const pool = require("../db");
 const { getPresignedUrl, blobExists, deleteFolder } = require("../services/s3");
 const { sendReminder, cancelAgreement, sendNdaAgreement } = require("../services/acrobat-sign");
+const { enqueue } = require("../services/queue");
 const requireDashboardAuth = require("../middleware/requireDashboardAuth");
 
 const router = express.Router();
@@ -159,6 +160,38 @@ router.post("/resellers/:id/cancel-nda", async (req, res, next) => {
     );
 
     res.json({ cancelled: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/resellers/:id/retry-completion", async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      "SELECT id, status, docusign_envelope_id, contact_email, contact_first_name, contact_last_name, legal_company_name FROM resellers WHERE id = $1",
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: "Reseller not found" });
+
+    const reseller = rows[0];
+    if (reseller.status !== "NDA Complete") {
+      return res.status(400).json({ error: `Cannot retry completion — status is "${reseller.status}", expected "NDA Complete".` });
+    }
+    if (!reseller.docusign_envelope_id) {
+      return res.status(400).json({ error: "No agreement ID on record for this reseller." });
+    }
+
+    await enqueue("NDA_COMPLETED", {
+      resellerId: reseller.id,
+      envelopeId: reseller.docusign_envelope_id,
+      contactEmail: reseller.contact_email,
+      contactFirstName: reseller.contact_first_name,
+      contactLastName: reseller.contact_last_name,
+      legalCompanyName: reseller.legal_company_name,
+    });
+
+    console.log(`[dashboard] NDA_COMPLETED re-enqueued for reseller=${reseller.id} by=${req.dashboardUser.email}`);
+    res.json({ queued: true });
   } catch (err) {
     next(err);
   }
