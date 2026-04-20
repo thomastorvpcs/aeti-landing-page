@@ -61,7 +61,7 @@ function buildAuthHeader(method, url) {
     `oauth_timestamp="${timestamp}",` +
     `oauth_nonce="${nonce}",` +
     `oauth_version="1.0",` +
-    `oauth_signature="${encodeURIComponent(signature)}"`
+    `oauth_signature="${signature}"`
   );
 }
 
