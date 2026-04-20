@@ -364,3 +364,15 @@ run().catch((err) => {
   console.error("[worker] Fatal error:", err);
   process.exit(1);
 });
+
+// Catch AMQP/Service Bus timeout errors and other unhandled exceptions
+// so the process exits cleanly and Azure restarts it automatically.
+process.on("uncaughtException", (err) => {
+  console.error("[worker] Uncaught exception — exiting for restart:", err.message);
+  process.exit(1);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[worker] Unhandled rejection — exiting for restart:", reason);
+  process.exit(1);
+});
