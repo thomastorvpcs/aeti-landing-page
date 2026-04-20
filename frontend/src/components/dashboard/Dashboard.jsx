@@ -432,7 +432,7 @@ export default function Dashboard() {
     const matchSearch = !q ||
       r.legal_company_name?.toLowerCase().includes(q) ||
       r.contact_email?.toLowerCase().includes(q) ||
-      r.ein?.includes(q);
+      r.ein?.replace(/-/g, "").includes(q.replace(/-/g, ""));
     return matchStatus && matchSearch;
   });
 
