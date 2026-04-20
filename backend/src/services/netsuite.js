@@ -116,38 +116,39 @@ async function createVendor(reseller) {
     submissionDate,
   } = reseller;
 
-  // Replace nulls with empty strings — the Restlet expects all fields present
-  const s = (v) => v ?? "";
+  // Only include fields that have a value — omit nulls so the Restlet
+  // receives the same kind of payload as a fully-populated Postman request.
+  const defined = (obj) => Object.fromEntries(Object.entries(obj).filter(([, v]) => v != null && v !== ""));
 
-  const payload = {
-    legalCompanyName:     s(legalCompanyName),
-    dba:                  s(dba),
-    ein:                  s(ein),
-    entityType:           s(entityType),
-    addressStreet:        s(addressStreet),
-    addressCity:          s(addressCity),
-    addressState:         s(addressState),
-    addressZip:           s(addressZip),
-    contactFirstName:     s(contactFirstName),
-    contactLastName:      s(contactLastName),
-    contactTitle:         s(contactTitle),
-    contactEmail:         s(contactEmail),
-    contactPhone:         s(contactPhone),
-    ndaSignerFirstName:   s(ndaSignerFirstName),
-    ndaSignerLastName:    s(ndaSignerLastName),
-    ndaSignerTitle:       s(ndaSignerTitle),
-    ndaSignerEmail:       s(ndaSignerEmail),
-    ndaSignerPhone:       s(ndaSignerPhone),
-    financeContactName:   s(financeContactName),
-    financeContactEmail:  s(financeContactEmail),
-    financeContactPhone:  s(financeContactPhone),
-    bankName:             s(bankName),
-    bankAba:              s(bankAba),
-    bankAccountNumber:    s(bankAccountNumber),
-    bankSwift:            s(bankSwift),
-    portalResellerId:     s(resellerId),
-    submissionDate:       s(submissionDate),
-  };
+  const payload = defined({
+    legalCompanyName,
+    dba,
+    ein,
+    entityType,
+    addressStreet,
+    addressCity,
+    addressState,
+    addressZip,
+    contactFirstName,
+    contactLastName,
+    contactTitle,
+    contactEmail,
+    contactPhone,
+    ndaSignerFirstName,
+    ndaSignerLastName,
+    ndaSignerTitle,
+    ndaSignerEmail,
+    ndaSignerPhone,
+    financeContactName,
+    financeContactEmail,
+    financeContactPhone,
+    bankName,
+    bankAba,
+    bankAccountNumber,
+    bankSwift,
+    portalResellerId: resellerId,
+    submissionDate,
+  });
 
   console.error("[netsuite] createVendor payload:", JSON.stringify(payload, null, 2));
 
