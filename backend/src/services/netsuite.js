@@ -80,12 +80,7 @@ function buildAuthHeader(method, url) {
 }
 
 function restletRequest(body) {
-  console.error("[netsuite] RESTLET_URL:", RESTLET_URL);
-  console.error("[netsuite] ACCOUNT_ID_REALM:", ACCOUNT_ID_REALM);
-  console.error("[netsuite] Consumer key (first 8):", process.env.NETSUITE_CONSUMER_KEY?.slice(0, 8));
-  console.error("[netsuite] Token ID (first 8):", process.env.NETSUITE_TOKEN_ID?.slice(0, 8));
   const auth = buildAuthHeader("POST", RESTLET_URL);
-  console.error("[netsuite] Auth header:", auth);
   return axios.post(RESTLET_URL, body, {
     headers: {
       Authorization: auth,
@@ -164,7 +159,7 @@ async function createVendor(reseller) {
     submissionDate,
   });
 
-  console.error("[netsuite] createVendor payload:", JSON.stringify(payload, null, 2));
+  console.log("[netsuite] createVendor:", legalCompanyName, ein);
 
   const response = await restletRequest(payload);
   const data = response.data;
