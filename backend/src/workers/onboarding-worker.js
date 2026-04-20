@@ -161,9 +161,9 @@ async function handleNdaCompleted(payload) {
     "S3 uploadFile(signedNda)"
   );
 
-  // 3. Update DB with NDA S3 key
+  // 3. Update DB with NDA S3 key and advance status to NDA Complete
   await pool.query(
-    "UPDATE resellers SET signed_nda_s3_key = $1 WHERE id = $2",
+    "UPDATE resellers SET signed_nda_s3_key = $1, status = 'NDA Complete', updated_at = NOW() WHERE id = $2",
     [ndaKey, resellerId]
   );
 
@@ -243,8 +243,8 @@ async function pollPendingAgreements() {
 
       if (status === "SIGNED") {
         await pool.query(
-          "UPDATE resellers SET status = $1, signed_at = NOW() WHERE id = $2",
-          ["NDA Complete", reseller.id]
+          "UPDATE resellers SET status = $1, signed_at = NOW() WHERE id = $2 AND status NOT IN ('NDA Processing', 'NDA Complete')",
+          ["NDA Processing", reseller.id]
         );
         await enqueue("NDA_COMPLETED", {
           resellerId: reseller.id,

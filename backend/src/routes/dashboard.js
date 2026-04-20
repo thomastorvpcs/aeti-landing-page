@@ -174,8 +174,8 @@ router.post("/resellers/:id/retry-completion", async (req, res, next) => {
     if (!rows.length) return res.status(404).json({ error: "Reseller not found" });
 
     const reseller = rows[0];
-    if (reseller.status !== "NDA Complete") {
-      return res.status(400).json({ error: `Cannot retry completion — status is "${reseller.status}", expected "NDA Complete".` });
+    if (reseller.status !== "NDA Complete" && reseller.status !== "NDA Processing") {
+      return res.status(400).json({ error: `Cannot retry completion — status is "${reseller.status}", expected "NDA Complete" or "NDA Processing".` });
     }
     if (!reseller.docusign_envelope_id) {
       return res.status(400).json({ error: "No agreement ID on record for this reseller." });

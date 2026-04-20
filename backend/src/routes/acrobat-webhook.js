@@ -90,11 +90,11 @@ router.post("/", async (req, res) => {
     }
 
     if (fullyComplete) {
-      // Atomic update — only succeeds if status is not already NDA Complete.
+      // Atomic update — only succeeds if not already processing or complete.
       // Prevents duplicate enqueues when two webhook events arrive simultaneously.
       const updated = await pool.query(
-        "UPDATE resellers SET status = $1, signed_at = NOW() WHERE id = $2 AND status != 'NDA Complete' RETURNING id",
-        ["NDA Complete", reseller.id]
+        "UPDATE resellers SET status = $1, signed_at = NOW() WHERE id = $2 AND status NOT IN ('NDA Processing', 'NDA Complete') RETURNING id",
+        ["NDA Processing", reseller.id]
       );
 
       if (updated.rowCount === 0) {

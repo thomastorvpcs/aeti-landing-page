@@ -6,6 +6,7 @@ const STATUS_META = {
   "NDA Approval Pending":   { label: "NDA Approval Pending",   bg: "bg-violet-50",   text: "text-violet-700",  dot: "bg-violet-500" },
   "NDA Pending":            { label: "NDA Pending",            bg: "bg-amber-50",    text: "text-amber-700",   dot: "bg-amber-400" },
   "Awaiting Countersign":   { label: "Awaiting Countersign",   bg: "bg-blue-50",     text: "text-blue-700",    dot: "bg-blue-500" },
+  "NDA Processing":         { label: "NDA Processing",         bg: "bg-teal-50",     text: "text-teal-700",    dot: "bg-teal-500" },
   "NDA Complete":           { label: "NDA Complete",           bg: "bg-green-50",    text: "text-green-700",   dot: "bg-green-500" },
   "Cancelled":              { label: "Cancelled",              bg: "bg-red-50",      text: "text-red-600",     dot: "bg-red-400" },
 };
@@ -240,7 +241,7 @@ function DetailModal({ reseller, onClose, onDelete }) {
               {resendResult === "error" && <span className="text-xs text-red-500 font-medium">Failed — try again</span>}
               {cancelResult === "ok" && <span className="text-xs text-red-600 font-medium">Agreement cancelled</span>}
               {cancelResult === "error" && <span className="text-xs text-red-500 font-medium">Cancel failed — try again</span>}
-              {reseller.status === "NDA Complete" && files && !files.signedNda && (
+              {(reseller.status === "NDA Processing" || (reseller.status === "NDA Complete" && files && !files.signedNda)) && (
                 <button
                   onClick={handleRetryCompletion}
                   disabled={retrying || retryResult === "ok"}
@@ -358,7 +359,7 @@ function DetailModal({ reseller, onClose, onDelete }) {
   );
 }
 
-const STATUSES = ["All", "Initiated", "NDA Approval Pending", "NDA Pending", "Awaiting Countersign", "NDA Complete", "Cancelled"];
+const STATUSES = ["All", "Initiated", "NDA Approval Pending", "NDA Pending", "Awaiting Countersign", "NDA Processing", "NDA Complete", "Cancelled"];
 
 export default function Dashboard() {
   const [resellers, setResellers] = useState([]);
@@ -441,6 +442,7 @@ export default function Dashboard() {
     approvalPending: resellers.filter((r) => r.status === "NDA Approval Pending").length,
     ndaPending: resellers.filter((r) => r.status === "NDA Pending").length,
     awaitingCountersign: resellers.filter((r) => r.status === "Awaiting Countersign").length,
+    ndaProcessing: resellers.filter((r) => r.status === "NDA Processing").length,
     ndaComplete: resellers.filter((r) => r.status === "NDA Complete").length,
     cancelled: resellers.filter((r) => r.status === "Cancelled").length,
   };
@@ -510,12 +512,13 @@ export default function Dashboard() {
         </div>
 
         {/* Stat cards */}
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6 mb-8">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-7 mb-8">
           {[
             { label: "Total", value: counts.total, color: "text-brand-navy" },
             { label: "Approval Pending", value: counts.approvalPending, color: "text-violet-600" },
             { label: "NDA Pending", value: counts.ndaPending, color: "text-amber-600" },
             { label: "Awaiting Countersign", value: counts.awaitingCountersign, color: "text-blue-600" },
+            { label: "NDA Processing", value: counts.ndaProcessing, color: "text-teal-600" },
             { label: "NDA Complete", value: counts.ndaComplete, color: "text-green-600" },
             { label: "Cancelled", value: counts.cancelled, color: "text-red-500" },
           ].map(({ label, value, color }) => (
