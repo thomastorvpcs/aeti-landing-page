@@ -140,28 +140,39 @@ async function createVendor(reseller) {
   const response = await restletRequest(payload);
   const data = response.data;
 
-  // Restlet should return { vendorId: "..." } or { internalId: "..." }
-  const internalId = data.vendorId || data.internalId;
-  if (!internalId) {
-    throw new Error(`NetSuite Restlet did not return a vendor ID. Response: ${JSON.stringify(data)}`);
+  if (!data.success) {
+    const detail = data.fields ? `Missing fields: ${data.fields.join(", ")}` : data.error;
+    throw new Error(`NetSuite Restlet error: ${detail}`);
   }
 
-  console.log("[netsuite] Vendor created, internalId:", internalId);
-  return internalId;
+  if (!data.netsuiteRecordId) {
+    throw new Error(`NetSuite Restlet succeeded but returned no netsuiteRecordId. Response: ${JSON.stringify(data)}`);
+  }
+
+  console.log("[netsuite] Vendor created, netsuiteRecordId:", data.netsuiteRecordId);
+  return data.netsuiteRecordId;
 }
 
 /**
  * Update the onboarding status on an existing vendor via the Restlet.
  */
 async function updateVendorStatus(netsuiteVendorId, status) {
-  await restletRequest({ action: "updateStatus", vendorId: netsuiteVendorId, status });
+  const response = await restletRequest({ action: "updateStatus", vendorId: netsuiteVendorId, status });
+  const data = response.data;
+  if (!data.success) {
+    throw new Error(`NetSuite updateVendorStatus error: ${data.error}`);
+  }
 }
 
 /**
  * Create a NetSuite Task assigned to a team member via the Restlet.
  */
 async function createTask({ title, message, assigneeEmployeeId, relatedVendorId }) {
-  await restletRequest({ action: "createTask", title, message, assigneeEmployeeId, relatedVendorId });
+  const response = await restletRequest({ action: "createTask", title, message, assigneeEmployeeId, relatedVendorId });
+  const data = response.data;
+  if (!data.success) {
+    throw new Error(`NetSuite createTask error: ${data.error}`);
+  }
 }
 
 module.exports = {
