@@ -68,40 +68,43 @@ async function handleResellerSubmitted(payload) {
   );
   console.log(`[worker] Vendor setup form uploaded to S3: ${vendorFormKey}`);
 
-  // 2. Create NetSuite vendor (skip if credentials not configured)
+  // 2. Create NetSuite vendor via Restlet (skip if not configured)
   let netsuiteVendorId = null;
-  if (process.env.NETSUITE_ACCOUNT_ID) {
+  if (process.env.NETSUITE_RESTLET_URL) {
     netsuiteVendorId = await withRetry(
       () => createVendor({
-        ein,
+        resellerId,
         legalCompanyName,
+        dba: reseller.dba,
+        ein,
         entityType: reseller.entity_type,
         addressStreet: reseller.address_street,
         addressCity: reseller.address_city,
         addressState: reseller.address_state,
         addressZip: reseller.address_zip,
-        contactEmail,
-        contactPhone: reseller.contact_phone,
         contactFirstName,
         contactLastName,
+        contactTitle: reseller.contact_title,
+        contactEmail,
+        contactPhone: reseller.contact_phone,
+        ndaSignerFirstName: reseller.nda_signer_first_name,
+        ndaSignerLastName: reseller.nda_signer_last_name,
+        ndaSignerTitle: reseller.nda_signer_title,
+        ndaSignerEmail: reseller.nda_signer_email,
+        ndaSignerPhone: reseller.nda_signer_phone,
+        financeContactName: reseller.finance_contact_name,
+        financeContactEmail: reseller.finance_contact_email,
+        financeContactPhone: reseller.finance_contact_phone,
+        bankName: reseller.bank_name,
+        bankAba: reseller.bank_aba,
+        bankAccountNumber: reseller.bank_account_number,
+        bankSwift: reseller.bank_swift,
+        submissionDate: reseller.created_at?.toISOString().slice(0, 10),
       }),
       "NetSuite createVendor"
     );
-
-    // 3. Create NetSuite Task for Finance (optional)
-    if (process.env.NETSUITE_FINANCE_EMPLOYEE_ID) {
-      await withRetry(
-        () => createTask({
-          title: `New reseller submission: ${legalCompanyName}`,
-          message: `Reseller ${legalCompanyName} (EIN: ${ein}) has submitted the onboarding form. W-9 attached. Please confirm banking details.`,
-          assigneeEmployeeId: process.env.NETSUITE_FINANCE_EMPLOYEE_ID,
-          relatedVendorId: netsuiteVendorId,
-        }),
-        "NetSuite createTask(finance)"
-      );
-    }
   } else {
-    console.warn("[worker] NETSUITE_ACCOUNT_ID not set — skipping NetSuite steps");
+    console.warn("[worker] NETSUITE_RESTLET_URL not set — skipping NetSuite steps");
   }
 
   // 4. Update DB — hold at "NDA Approval Pending" until a dashboard user approves and sends the NDA
@@ -169,25 +172,12 @@ async function handleNdaCompleted(payload) {
 
   // 4. File attachment to NetSuite skipped — files are in S3
 
-  if (reseller.netsuite_vendor_id) {
+  if (reseller.netsuite_vendor_id && process.env.NETSUITE_RESTLET_URL) {
     // 5. Update NetSuite vendor status
     await withRetry(
       () => updateVendorStatus(reseller.netsuite_vendor_id, "NDA Complete"),
       "NetSuite updateVendorStatus(NDA Complete)"
     );
-
-    // 6. Create NetSuite Task for Legal (optional)
-    if (process.env.NETSUITE_LEGAL_EMPLOYEE_ID) {
-      await withRetry(
-        () => createTask({
-          title: `NDA signed by reseller: ${legalCompanyName}`,
-          message: `${contactFirstName} ${contactLastName} has signed the NDA for ${legalCompanyName}. Please countersign in DocuSign (envelope: ${envelopeId}) and confirm completion.`,
-          assigneeEmployeeId: process.env.NETSUITE_LEGAL_EMPLOYEE_ID,
-          relatedVendorId: reseller.netsuite_vendor_id,
-        }),
-        "NetSuite createTask(legal)"
-      );
-    }
   }
 
   // 7. Generate authorization letter
