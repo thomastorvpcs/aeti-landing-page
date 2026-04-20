@@ -21,11 +21,14 @@ async function enqueue(type, payload) {
 
 /**
  * Subscribe to the queue with push-based message delivery.
- * Automatically reconnects if the Service Bus connection drops.
- * `processMessage` is called with each message; `processError` handles errors.
+ * Includes a watchdog that recreates the receiver if it goes silent —
+ * the Azure Service Bus SDK can silently stop delivering messages without
+ * calling processError, so we can't rely on error events alone.
  */
 function subscribe(processMessage, processError) {
   let receiver;
+  let lastActivityAt = Date.now();
+  let watchdogTimer;
 
   function start() {
     if (receiver) {
@@ -36,6 +39,7 @@ function subscribe(processMessage, processError) {
 
     receiver.subscribe({
       processMessage: async (msg) => {
+        lastActivityAt = Date.now();
         const body = typeof msg.body === "string" ? JSON.parse(msg.body) : msg.body;
         await processMessage(body, async () => {
           await receiver.completeMessage(msg);
@@ -44,15 +48,40 @@ function subscribe(processMessage, processError) {
       processError: async (err) => {
         const error = err.error || err;
         console.error("[queue] Service Bus error — reconnecting in 10s:", error.message);
-        setTimeout(start, 10000);
+        scheduleRestart(10000);
         await processError(error);
       },
     });
 
+    lastActivityAt = Date.now();
     console.log("[queue] Service Bus subscription active");
   }
 
+  function scheduleRestart(delayMs) {
+    if (watchdogTimer) clearInterval(watchdogTimer);
+    setTimeout(() => {
+      console.log("[queue] Restarting Service Bus subscription...");
+      start();
+      startWatchdog();
+    }, delayMs);
+  }
+
+  function startWatchdog() {
+    if (watchdogTimer) clearInterval(watchdogTimer);
+    // Check every 2 minutes. If nothing has happened in 4 minutes, recreate the receiver.
+    // The polling loop runs every 5 minutes so legitimate quiet periods exist,
+    // but a silent subscription beyond 4 minutes is a sign it has dropped.
+    watchdogTimer = setInterval(() => {
+      const silentMs = Date.now() - lastActivityAt;
+      if (silentMs > 4 * 60 * 1000) {
+        console.warn(`[queue] Watchdog: no activity for ${Math.round(silentMs / 1000)}s — recreating Service Bus subscription`);
+        start();
+      }
+    }, 2 * 60 * 1000);
+  }
+
   start();
+  startWatchdog();
 }
 
 module.exports = { enqueue, subscribe };
