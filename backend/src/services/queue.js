@@ -21,25 +21,38 @@ async function enqueue(type, payload) {
 
 /**
  * Subscribe to the queue with push-based message delivery.
- * Messages are delivered instantly as they arrive — no polling delay.
+ * Automatically reconnects if the Service Bus connection drops.
  * `processMessage` is called with each message; `processError` handles errors.
  */
 function subscribe(processMessage, processError) {
-  const receiver = _client.createReceiver(QUEUE_NAME, { receiveMode: "peekLock" });
+  let receiver;
 
-  receiver.subscribe({
-    processMessage: async (msg) => {
-      const body = typeof msg.body === "string" ? JSON.parse(msg.body) : msg.body;
-      await processMessage(body, async () => {
-        await receiver.completeMessage(msg);
-      });
-    },
-    processError: async (err) => {
-      await processError(err.error || err);
-    },
-  });
+  function start() {
+    if (receiver) {
+      receiver.close().catch(() => {});
+    }
 
-  return receiver;
+    receiver = _client.createReceiver(QUEUE_NAME, { receiveMode: "peekLock" });
+
+    receiver.subscribe({
+      processMessage: async (msg) => {
+        const body = typeof msg.body === "string" ? JSON.parse(msg.body) : msg.body;
+        await processMessage(body, async () => {
+          await receiver.completeMessage(msg);
+        });
+      },
+      processError: async (err) => {
+        const error = err.error || err;
+        console.error("[queue] Service Bus error — reconnecting in 10s:", error.message);
+        setTimeout(start, 10000);
+        await processError(error);
+      },
+    });
+
+    console.log("[queue] Service Bus subscription active");
+  }
+
+  start();
 }
 
 module.exports = { enqueue, subscribe };
