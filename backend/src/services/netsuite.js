@@ -19,6 +19,20 @@ const ACCOUNT_ID = process.env.NETSUITE_ACCOUNT_ID;
 const ACCOUNT_ID_REALM = ACCOUNT_ID?.replace(/-/g, "_").toUpperCase();
 const RESTLET_URL = process.env.NETSUITE_RESTLET_URL;
 
+const STATE_NAMES = {
+  AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas", CA: "California",
+  CO: "Colorado", CT: "Connecticut", DE: "Delaware", FL: "Florida", GA: "Georgia",
+  HI: "Hawaii", ID: "Idaho", IL: "Illinois", IN: "Indiana", IA: "Iowa",
+  KS: "Kansas", KY: "Kentucky", LA: "Louisiana", ME: "Maine", MD: "Maryland",
+  MA: "Massachusetts", MI: "Michigan", MN: "Minnesota", MS: "Mississippi", MO: "Missouri",
+  MT: "Montana", NE: "Nebraska", NV: "Nevada", NH: "New Hampshire", NJ: "New Jersey",
+  NM: "New Mexico", NY: "New York", NC: "North Carolina", ND: "North Dakota", OH: "Ohio",
+  OK: "Oklahoma", OR: "Oregon", PA: "Pennsylvania", RI: "Rhode Island", SC: "South Carolina",
+  SD: "South Dakota", TN: "Tennessee", TX: "Texas", UT: "Utah", VT: "Vermont",
+  VA: "Virginia", WA: "Washington", WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming",
+  DC: "District of Columbia",
+};
+
 function buildAuthHeader(method, url) {
   const nonce = crypto.randomBytes(16).toString("hex");
   const timestamp = Math.floor(Date.now() / 1000).toString();
@@ -127,7 +141,7 @@ async function createVendor(reseller) {
     entityType,
     addressStreet,
     addressCity,
-    addressState,
+    addressState: STATE_NAMES[addressState] || addressState,
     addressZip,
     contactFirstName,
     contactLastName,
