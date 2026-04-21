@@ -5,7 +5,7 @@ const pool = require("../db");
 const { subscribe, enqueue } = require("../services/queue");
 const { uploadFile, downloadFile } = require("../services/s3"); // downloadFile used in handleNdaCompleted
 const { downloadSignedNda, getAgreementStatus } = require("../services/acrobat-sign");
-const { createVendor, updateVendorStatus, createTask } = require("../services/netsuite");
+const { createVendor } = require("../services/netsuite");
 const { sendWelcomeEmail, sendInternalAlert } = require("../services/sendgrid");
 const { generateAuthorizationLetter, generateVendorSetupForm } = require("../services/pdf");
 
@@ -170,17 +170,7 @@ async function handleNdaCompleted(payload) {
     [ndaKey, resellerId]
   );
 
-  // 4. File attachment to NetSuite skipped — files are in S3
-
-  if (reseller.netsuite_vendor_id && process.env.NETSUITE_RESTLET_URL) {
-    // 5. Update NetSuite vendor status
-    await withRetry(
-      () => updateVendorStatus(reseller.netsuite_vendor_id, "NDA Complete"),
-      "NetSuite updateVendorStatus(NDA Complete)"
-    );
-  }
-
-  // 7. Generate authorization letter
+  // 5. Generate authorization letter
   const programLetterPdf = await withRetry(
     () => generateAuthorizationLetter({ legalCompanyName }),
     "generateAuthorizationLetter"
