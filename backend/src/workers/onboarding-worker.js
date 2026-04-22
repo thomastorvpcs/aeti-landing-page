@@ -68,12 +68,11 @@ async function handleResellerSubmitted(payload) {
   );
   console.log(`[worker] Vendor setup form uploaded to S3: ${vendorFormKey}`);
 
-  // Generate 1-year SAS URLs for all three documents to attach to NetSuite vendor record
-  const ONE_YEAR = 365 * 24 * 3600;
+  // Generate 15-minute SAS URLs for all three documents — NetSuite downloads immediately
   const [w9Url, bankLetterUrl, vendorSetupFormUrl] = await Promise.all([
-    w9Key ? getPresignedUrl(w9Key, ONE_YEAR) : null,
-    bankLetterKey ? getPresignedUrl(bankLetterKey, ONE_YEAR) : null,
-    getPresignedUrl(vendorFormKey, ONE_YEAR),
+    w9Key ? getPresignedUrl(w9Key, 900) : null,
+    bankLetterKey ? getPresignedUrl(bankLetterKey, 900) : null,
+    getPresignedUrl(vendorFormKey, 900),
   ]);
 
   // 2. Create NetSuite vendor via Restlet (skip if not configured)
