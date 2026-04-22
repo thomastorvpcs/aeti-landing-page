@@ -2,6 +2,7 @@ const PDFDocument = require("pdfkit");
 const path = require("path");
 
 const LETTERHEAD_PATH = path.join(__dirname, "../assets/PCSletterhead.jpg");
+const SIGNATURE_PATH = path.join(__dirname, "../assets/signature.png");
 
 /**
  * Generate the PCS Wireless Authorized Reseller letter as a PDF buffer.
@@ -70,7 +71,9 @@ function generateAuthorizationLetter({ legalCompanyName }) {
 
     // Closing
     doc.text("Sincerely,");
-    doc.moveDown(2);
+    doc.moveDown(1);
+    doc.image(SIGNATURE_PATH, { width: 150 });
+    doc.moveDown(0.5);
     doc.text("Chaim T. Nash");
     doc.text("CEO");
     doc.text("PCS Wireless LLC");
