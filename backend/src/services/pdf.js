@@ -33,7 +33,7 @@ function drawPageFooter(doc) {
 
 function generateAuthorizationLetter({ legalCompanyName }) {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 60, size: "letter", bufferPages: true });
+    const doc = new PDFDocument({ margin: 60, size: "letter" });
     const chunks = [];
 
     doc.on("data", (chunk) => chunks.push(chunk));
@@ -78,10 +78,7 @@ function generateAuthorizationLetter({ legalCompanyName }) {
     doc.text("CEO");
     doc.text("PCS Wireless LLC");
 
-    // Always draw the footer on page 1, regardless of where the content cursor ended up
-    doc.switchToPage(0);
     drawPageFooter(doc);
-    doc.flushPages();
     doc.end();
   });
 }
