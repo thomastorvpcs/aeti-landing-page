@@ -33,7 +33,7 @@ function drawPageFooter(doc) {
 
 function generateAuthorizationLetter({ legalCompanyName }) {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 60, size: "letter" });
+    const doc = new PDFDocument({ margin: { top: 60, right: 60, bottom: 30, left: 60 }, size: "letter" });
     const chunks = [];
 
     doc.on("data", (chunk) => chunks.push(chunk));
