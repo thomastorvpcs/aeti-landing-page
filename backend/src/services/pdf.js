@@ -67,13 +67,13 @@ function generateAuthorizationLetter({ legalCompanyName }) {
       `This letter serves to confirm that PCS Wireless LLC ("PCS") acknowledges and agrees that Reseller's role in the transactions under the Apple Business Trade-In Program ("TIP") between PCS and those customers who have designated Reseller as their reseller is strictly limited to receiving payment on behalf of such customers for the amounts due, if any, from PCS to such customers.`,
       { align: "justify" }
     );
-    doc.moveDown(2);
+    doc.moveDown(1.5);
 
     // Closing
     doc.text("Sincerely,");
-    doc.moveDown(1);
-    doc.image(SIGNATURE_PATH, { width: 150 });
-    doc.moveDown(0.5);
+    doc.moveDown(0.3);
+    doc.image(SIGNATURE_PATH, { width: 120 });
+    doc.moveDown(0.3);
     doc.text("Chaim T. Nash");
     doc.text("CEO");
     doc.text("PCS Wireless LLC");
