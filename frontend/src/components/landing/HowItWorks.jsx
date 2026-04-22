@@ -12,8 +12,8 @@ const steps = [
     step: 2,
     title: "Sign the NDA",
     description:
-      "Receive the mutual NDA via DocuSign. Review and sign electronically. PCS Legal countersigns within 2 business days.",
-    duration: "< 2 business days",
+      "Within 1 business day you'll receive the mutual NDA by email for electronic signature. PCS Legal countersigns promptly.",
+    duration: "1 business day",
   },
   {
     step: 3,
@@ -21,13 +21,6 @@ const steps = [
     description:
       "Our finance team reaches out to verify banking details and send a $1 test payment to confirm the channel.",
     duration: "1–2 business days",
-  },
-  {
-    step: 4,
-    title: "Activate & start selling",
-    description:
-      "Receive your partner portal credentials, complete onboarding training, and access all reseller resources.",
-    duration: "Same day",
   },
 ];
 
@@ -43,7 +36,7 @@ export default function HowItWorks() {
             How it works
           </h2>
           <p className="mt-4 text-lg text-gray-600">
-            From application to active partner in as few as 5 business days.
+            From application to active partner in as few as 3 business days.
             Everything happens online — no paper forms or email chains.
           </p>
         </div>
@@ -51,9 +44,9 @@ export default function HowItWorks() {
         {/* Steps */}
         <div className="relative">
           {/* Connector line (desktop) */}
-          <div className="hidden lg:block absolute top-10 left-[12.5%] right-[12.5%] h-0.5 bg-gray-200" />
+          <div className="hidden lg:block absolute top-10 left-[16.5%] right-[16.5%] h-0.5 bg-gray-200" />
 
-          <div className="grid grid-cols-1 gap-10 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-10 lg:grid-cols-3">
             {steps.map((item, idx) => (
               <div key={item.step} className="relative flex flex-col items-center text-center">
                 {/* Step circle */}
