@@ -220,4 +220,17 @@ router.delete("/resellers/:id", async (req, res, next) => {
   }
 });
 
+// Test endpoint — generates the authorization letter with a sample company name
+router.get("/test-letter", async (_req, res, next) => {
+  try {
+    const { generateAuthorizationLetter } = require("../services/pdf");
+    const pdf = await generateAuthorizationLetter({ legalCompanyName: "Test Company LLC" });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", 'inline; filename="test_letter.pdf"');
+    res.send(pdf);
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;
