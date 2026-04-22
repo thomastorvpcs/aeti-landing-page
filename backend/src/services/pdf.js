@@ -42,7 +42,7 @@ function generateAuthorizationLetter({ legalCompanyName }) {
 
     // Letterhead image centered at top
     doc.image(LETTERHEAD_PATH, 60, 40, { width: 492, align: "center" });
-    doc.moveDown(3);
+    doc.moveDown(2);
 
     // Date
     const today = new Date();
@@ -52,22 +52,22 @@ function generateAuthorizationLetter({ legalCompanyName }) {
       day: "numeric",
     });
     doc.fontSize(11).font("Helvetica").text(`Date: ${dateStr}`);
-    doc.moveDown();
+    doc.moveDown(0.5);
 
     // Addressee
     doc.text(`To: ${legalCompanyName} ("Reseller")`);
-    doc.moveDown();
+    doc.moveDown(0.5);
 
     // Subject
     doc.text("Re: Apple Business Trade-In Program");
-    doc.moveDown();
+    doc.moveDown(0.5);
 
     // Body
     doc.text(
       `This letter serves to confirm that PCS Wireless LLC ("PCS") acknowledges and agrees that Reseller's role in the transactions under the Apple Business Trade-In Program ("TIP") between PCS and those customers who have designated Reseller as their reseller is strictly limited to receiving payment on behalf of such customers for the amounts due, if any, from PCS to such customers.`,
       { align: "justify" }
     );
-    doc.moveDown(1.5);
+    doc.moveDown(1);
 
     // Closing
     doc.text("Sincerely,");
