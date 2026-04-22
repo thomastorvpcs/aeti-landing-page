@@ -42,7 +42,7 @@ function generateAuthorizationLetter({ legalCompanyName }) {
 
     // Letterhead image centered at top
     doc.image(LETTERHEAD_PATH, 60, 40, { width: 492, align: "center" });
-    doc.moveDown(1);
+    doc.moveDown(3);
 
     // Date
     const today = new Date();
@@ -73,7 +73,7 @@ function generateAuthorizationLetter({ legalCompanyName }) {
     doc.text("Sincerely,");
     doc.moveDown(0.3);
     doc.image(SIGNATURE_PATH, { width: 120 });
-    doc.moveDown(0.3);
+    doc.moveDown(1);
     doc.text("Chaim T. Nash");
     doc.text("CEO");
     doc.text("PCS Wireless LLC");
