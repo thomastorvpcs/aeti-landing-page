@@ -123,6 +123,9 @@ async function createVendor(reseller) {
     bankAccountNumber,
     bankSwift,
     submissionDate,
+    w9Url,
+    bankLetterUrl,
+    vendorSetupFormUrl,
   } = reseller;
 
   // Only include fields that have a value — omit nulls so the Restlet
@@ -157,6 +160,9 @@ async function createVendor(reseller) {
     bankSwift,
     portalResellerId: resellerId,
     submissionDate,
+    w9Url,
+    bankLetterUrl,
+    vendorSetupFormUrl,
   });
 
   console.log("[netsuite] createVendor:", legalCompanyName, ein);

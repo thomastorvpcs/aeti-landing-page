@@ -3,7 +3,7 @@ require("dotenv").config();
 const http = require("http");
 const pool = require("../db");
 const { subscribe, enqueue } = require("../services/queue");
-const { uploadFile, downloadFile } = require("../services/s3"); // downloadFile used in handleNdaCompleted
+const { uploadFile, downloadFile, getPresignedUrl } = require("../services/s3");
 const { downloadSignedNda, getAgreementStatus } = require("../services/acrobat-sign");
 const { createVendor } = require("../services/netsuite");
 const { sendWelcomeEmail, sendInternalAlert } = require("../services/sendgrid");
@@ -49,7 +49,7 @@ async function withRetry(fn, label) {
  */
 async function handleResellerSubmitted(payload) {
   const { resellerId, legalCompanyName, contactEmail, contactFirstName, contactLastName, ein,
-          ndaSignerFirstName, ndaSignerLastName, ndaSignerEmail } = payload;
+          ndaSignerFirstName, ndaSignerLastName, ndaSignerEmail, w9Key, bankLetterKey } = payload;
 
   // Fetch full reseller record from DB
   const { rows } = await pool.query("SELECT * FROM resellers WHERE id = $1", [resellerId]);
@@ -67,6 +67,14 @@ async function handleResellerSubmitted(payload) {
     "S3 uploadFile(vendorSetupForm)"
   );
   console.log(`[worker] Vendor setup form uploaded to S3: ${vendorFormKey}`);
+
+  // Generate 1-year SAS URLs for all three documents to attach to NetSuite vendor record
+  const ONE_YEAR = 365 * 24 * 3600;
+  const [w9Url, bankLetterUrl, vendorSetupFormUrl] = await Promise.all([
+    w9Key ? getPresignedUrl(w9Key, ONE_YEAR) : null,
+    bankLetterKey ? getPresignedUrl(bankLetterKey, ONE_YEAR) : null,
+    getPresignedUrl(vendorFormKey, ONE_YEAR),
+  ]);
 
   // 2. Create NetSuite vendor via Restlet (skip if not configured)
   let netsuiteVendorId = null;
@@ -100,6 +108,9 @@ async function handleResellerSubmitted(payload) {
         bankAccountNumber: reseller.bank_account_number,
         bankSwift: reseller.bank_swift,
         submissionDate: reseller.created_at?.toISOString().slice(0, 10),
+        w9Url,
+        bankLetterUrl,
+        vendorSetupFormUrl,
       }),
       "NetSuite createVendor"
     );
