@@ -141,12 +141,6 @@ async function registerWebhook(webhookUrl) {
   return response.data.id;
 }
 
-async function getLibraryTemplates() {
-  const client = await apiClient();
-  const response = await client.get("/libraryDocuments");
-  return response.data;
-}
-
 /**
  * Fetch the current status of an agreement.
  */
@@ -200,4 +194,4 @@ async function cancelAgreement(agreementId) {
   console.log(`[acrobat] Agreement ${agreementId} cancelled`);
 }
 
-module.exports = { sendNdaAgreement, downloadSignedNda, registerWebhook, getLibraryTemplates, getAgreementStatus, sendReminder, cancelAgreement };
+module.exports = { sendNdaAgreement, downloadSignedNda, registerWebhook, getAgreementStatus, sendReminder, cancelAgreement };

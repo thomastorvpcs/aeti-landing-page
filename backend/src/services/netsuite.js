@@ -177,30 +177,6 @@ async function createVendor(reseller) {
   return data.netsuiteRecordId;
 }
 
-/**
- * Update the onboarding status on an existing vendor via the Restlet.
- */
-async function updateVendorStatus(netsuiteVendorId, status) {
-  const response = await restletRequest({ action: "updateStatus", vendorId: netsuiteVendorId, status });
-  const data = response.data;
-  if (!data.success) {
-    throw new Error(`NetSuite updateVendorStatus error: ${data.error}`);
-  }
-}
-
-/**
- * Create a NetSuite Task assigned to a team member via the Restlet.
- */
-async function createTask({ title, message, assigneeEmployeeId, relatedVendorId }) {
-  const response = await restletRequest({ action: "createTask", title, message, assigneeEmployeeId, relatedVendorId });
-  const data = response.data;
-  if (!data.success) {
-    throw new Error(`NetSuite createTask error: ${data.error}`);
-  }
-}
-
 module.exports = {
   createVendor,
-  updateVendorStatus,
-  createTask,
 };

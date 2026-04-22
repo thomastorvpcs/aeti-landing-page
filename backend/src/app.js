@@ -49,54 +49,6 @@ app.use("/acrobat/webhook", acrobatWebhookRouter);
 app.use("/api/dashboard/auth", dashboardLoginRateLimiter, dashboardAuthRouter);
 app.use("/api/dashboard", dashboardRouter);
 
-// Admin route to register Acrobat Sign webhook
-app.get("/admin/register-webhook", async (_req, res) => {
-  try {
-    const { registerWebhook } = require("./services/acrobat-sign");
-    const webhookUrl = "https://abti-api.azurewebsites.net/acrobat/webhook";
-    const id = await registerWebhook(webhookUrl);
-    res.json({ success: true, webhookId: id, url: webhookUrl });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// OAuth callback helper — displays the authorization code so it can be copied
-app.get("/oauth/callback", (req, res) => {
-  const code = req.query.code;
-  if (!code) return res.status(400).send("<h2>No code received</h2>");
-  res.send(`
-    <html><body style="font-family:sans-serif;padding:40px">
-      <h2>Authorization code</h2>
-      <p>Copy this code and use it in the PowerShell token exchange:</p>
-      <textarea rows="4" style="width:100%;font-size:14px" onclick="this.select()">${code}</textarea>
-    </body></html>
-  `);
-});
-
-// Admin route to run all pending DB migrations
-app.get("/admin/run-migration", async (_req, res) => {
-  try {
-    const pool = require("./db");
-    const fs = require("fs");
-    const path = require("path");
-    const migrations = [
-      "001_initial.sql",
-      "002_add_vendor_fields.sql",
-      "003_add_nda_signer.sql",
-      "004_add_reseller_signed_at.sql",
-      "005_dashboard_users.sql",
-    ];
-    for (const file of migrations) {
-      const sql = fs.readFileSync(path.join(__dirname, "db/migrations", file), "utf8");
-      await pool.query(sql);
-    }
-    res.json({ success: true });
-  } catch (err) {
-    res.json({ error: err.message });
-  }
-});
-
 // 404 for any unmatched routes
 app.use((_req, res) => {
   res.status(404).json({ error: "Not found" });
