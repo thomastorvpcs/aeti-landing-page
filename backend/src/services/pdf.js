@@ -67,7 +67,7 @@ function generateAuthorizationLetter({ legalCompanyName }) {
       `This letter serves to confirm that PCS Wireless LLC ("PCS") acknowledges and agrees that Reseller's role in the transactions under the Apple Business Trade-In Program ("TIP") between PCS and those customers who have designated Reseller as their reseller is strictly limited to receiving payment on behalf of such customers for the amounts due, if any, from PCS to such customers.`,
       { align: "justify" }
     );
-    doc.moveDown(1);
+    doc.moveDown(2.5);
 
     // Closing
     doc.text("Sincerely,");
