@@ -42,7 +42,7 @@ function generateAuthorizationLetter({ legalCompanyName }) {
 
     // Letterhead image centered at top
     doc.image(LETTERHEAD_PATH, 60, 40, { width: 492, align: "center" });
-    doc.y = 180; // Start content below the letterhead regardless of image height
+    doc.y = 155; // Start content below the letterhead regardless of image height
 
     // Date
     const today = new Date();
@@ -52,15 +52,15 @@ function generateAuthorizationLetter({ legalCompanyName }) {
       day: "numeric",
     });
     doc.fontSize(11).font("Helvetica").text(`Date: ${dateStr}`);
-    doc.moveDown(0.5);
+    doc.moveDown(1);
 
     // Addressee
     doc.text(`To: ${legalCompanyName} ("Reseller")`);
-    doc.moveDown(0.5);
+    doc.moveDown(1);
 
     // Subject
     doc.text("Re: Apple Business Trade-In Program");
-    doc.moveDown(0.5);
+    doc.moveDown(1.5);
 
     // Body
     doc.text(
