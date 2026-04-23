@@ -21,9 +21,13 @@ function StatusBadge({ status }) {
   );
 }
 
+// Token is held in module memory — not in Web Storage — so it cannot be
+// read by XSS-injected scripts via window/document. The tradeoff is that
+// it is lost on page refresh, requiring re-login.
+let _token = null;
+
 function authHeaders() {
-  const token = sessionStorage.getItem("dashboard_token");
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  return _token ? { Authorization: `Bearer ${_token}` } : {};
 }
 
 function formatDate(iso) {
@@ -363,15 +367,13 @@ function DetailModal({ reseller, onClose, onDelete }) {
 export default function Dashboard() {
   const [resellers, setResellers] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(() =>
-    sessionStorage.getItem("dashboard_token") ? null : "unauthorized"
-  );
+  const [error, setError] = useState("unauthorized");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [selected, setSelected] = useState(null);
 
   const load = useCallback(async () => {
-    if (!sessionStorage.getItem("dashboard_token")) {
+    if (!_token) {
       setError("unauthorized");
       return;
     }
@@ -384,6 +386,7 @@ export default function Dashboard() {
       setResellers(data);
     } catch (err) {
       if (err.response?.status === 401) {
+        _token = null;
         setError("unauthorized");
       } else {
         setError(err.message || "Failed to load data.");
@@ -410,7 +413,8 @@ export default function Dashboard() {
         email: loginEmail,
         password: loginPassword,
       });
-      sessionStorage.setItem("dashboard_token", data.token);
+      _token = data.token;
+      setError(null);
       load();
     } catch (err) {
       setLoginError(err.response?.data?.error || "Login failed. Check your credentials.");
@@ -420,7 +424,7 @@ export default function Dashboard() {
   }
 
   function handleLogout() {
-    sessionStorage.removeItem("dashboard_token");
+    _token = null;
     setResellers([]);
     setError("unauthorized");
   }
