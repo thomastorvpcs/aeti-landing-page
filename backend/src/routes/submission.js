@@ -1,6 +1,6 @@
 const express = require("express");
 const { v4: uuidv4 } = require("uuid");
-const upload = require("../middleware/upload");
+const { upload, validateFileMagicBytes } = require("../middleware/upload");
 const pool = require("../db");
 const { encryptionKey, einHmac } = require("../db/crypto");
 const { uploadFile } = require("../services/storage");
@@ -8,7 +8,7 @@ const { enqueue } = require("../services/queue");
 
 const router = express.Router();
 
-router.post("/", upload.fields([{ name: "w9", maxCount: 1 }, { name: "bankLetter", maxCount: 1 }]), async (req, res, next) => {
+router.post("/", upload.fields([{ name: "w9", maxCount: 1 }, { name: "bankLetter", maxCount: 1 }]), validateFileMagicBytes, async (req, res, next) => {
   try {
     const {
       legalCompanyName,

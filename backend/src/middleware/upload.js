@@ -1,4 +1,5 @@
 const multer = require("multer");
+const { fileTypeFromBuffer } = require("file-type");
 
 const ALLOWED_TYPES = ["application/pdf", "image/jpeg", "image/png"];
 const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
@@ -22,4 +23,20 @@ const upload = multer({
   },
 });
 
-module.exports = upload;
+// Second-pass validation: verify actual file magic bytes match the declared
+// MIME type. Runs after Multer so the buffer is available in memory.
+// Rejects files where the content doesn't match what the header claims.
+async function validateFileMagicBytes(req, res, next) {
+  const files = Object.values(req.files || {}).flat();
+  for (const file of files) {
+    const detected = await fileTypeFromBuffer(file.buffer);
+    if (!detected || !ALLOWED_TYPES.includes(detected.mime)) {
+      return res.status(422).json({
+        error: `File "${file.originalname}" is not a valid PDF, JPG, or PNG.`,
+      });
+    }
+  }
+  next();
+}
+
+module.exports = { upload, validateFileMagicBytes };
