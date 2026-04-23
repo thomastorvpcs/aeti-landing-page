@@ -3,7 +3,7 @@ const express = require("express");
 const helmet = require("helmet");
 const cors = require("cors");
 const path = require("path");
-const { globalRateLimiter, submissionRateLimiter, dashboardLoginRateLimiter } = require("./middleware/rate-limit");
+const { globalRateLimiter, submissionRateLimiter, dashboardLoginRateLimiter, dashboardApiRateLimiter } = require("./middleware/rate-limit");
 const submissionRouter = require("./routes/submission");
 const acrobatWebhookRouter = require("./routes/acrobat-webhook");
 const dashboardAuthRouter = require("./routes/dashboardAuth");
@@ -48,7 +48,7 @@ app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.use("/api/submit", submissionRateLimiter, submissionRouter);
 app.use("/acrobat/webhook", acrobatWebhookRouter);
 app.use("/api/dashboard/auth", dashboardLoginRateLimiter, dashboardAuthRouter);
-app.use("/api/dashboard", dashboardRouter);
+app.use("/api/dashboard", dashboardApiRateLimiter, dashboardRouter);
 
 // 404 for any unmatched routes
 app.use((_req, res) => {

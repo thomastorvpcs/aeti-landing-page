@@ -5,6 +5,7 @@ const { getPresignedUrl, blobExists, deleteFolder } = require("../services/stora
 const { sendReminder, cancelAgreement, sendNdaAgreement } = require("../services/acrobat-sign");
 const { enqueue } = require("../services/queue");
 const requireDashboardAuth = require("../middleware/requireDashboardAuth");
+const { dashboardActionRateLimiter } = require("../middleware/rate-limit");
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -78,7 +79,7 @@ router.get("/resellers/:id/files", async (req, res, next) => {
   }
 });
 
-router.post("/resellers/:id/send-nda", async (req, res, next) => {
+router.post("/resellers/:id/send-nda", dashboardActionRateLimiter, async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       "SELECT * FROM resellers WHERE id = $1",
@@ -117,7 +118,7 @@ router.post("/resellers/:id/send-nda", async (req, res, next) => {
   }
 });
 
-router.post("/resellers/:id/resend-nda", async (req, res, next) => {
+router.post("/resellers/:id/resend-nda", dashboardActionRateLimiter, async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       "SELECT status, docusign_envelope_id FROM resellers WHERE id = $1",
@@ -176,7 +177,7 @@ router.post("/resellers/:id/cancel-nda", async (req, res, next) => {
   }
 });
 
-router.post("/resellers/:id/retry-completion", async (req, res, next) => {
+router.post("/resellers/:id/retry-completion", dashboardActionRateLimiter, async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       "SELECT id, status, docusign_envelope_id, contact_email, contact_first_name, contact_last_name, legal_company_name FROM resellers WHERE id = $1",
