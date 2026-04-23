@@ -1,5 +1,6 @@
 const express = require("express");
 const pool = require("../db");
+const { encryptionKey } = require("../db/crypto");
 const { getPresignedUrl, blobExists, deleteFolder } = require("../services/storage");
 const { sendReminder, cancelAgreement, sendNdaAgreement } = require("../services/acrobat-sign");
 const { enqueue } = require("../services/queue");
@@ -11,12 +12,13 @@ router.use(requireDashboardAuth);
 
 router.get("/resellers", async (_req, res, next) => {
   try {
-    const { rows } = await pool.query(`
-      SELECT
+    const key = encryptionKey();
+    const { rows } = await pool.query(
+      `SELECT
         id,
         legal_company_name,
         dba,
-        ein,
+        pgp_sym_decrypt(ein, $1)::text AS ein,
         entity_type,
         address_city,
         address_state,
@@ -35,8 +37,9 @@ router.get("/resellers", async (_req, res, next) => {
         created_at,
         updated_at
       FROM resellers
-      ORDER BY created_at DESC
-    `);
+      ORDER BY created_at DESC`,
+      [key]
+    );
     res.json(rows);
   } catch (err) {
     next(err);

@@ -2,6 +2,7 @@ require("dotenv").config();
 
 const http = require("http");
 const pool = require("../db");
+const { encryptionKey, selectResellerSql } = require("../db/crypto");
 const { subscribe, enqueue } = require("../services/queue");
 const { uploadFile, downloadFile, getPresignedUrl } = require("../services/storage");
 const { downloadSignedNda, getAgreementStatus } = require("../services/acrobat-sign");
@@ -51,8 +52,9 @@ async function handleResellerSubmitted(payload) {
   const { resellerId, legalCompanyName, contactEmail, contactFirstName, contactLastName, ein,
           ndaSignerFirstName, ndaSignerLastName, ndaSignerEmail, w9Key, bankLetterKey } = payload;
 
-  // Fetch full reseller record from DB
-  const { rows } = await pool.query("SELECT * FROM resellers WHERE id = $1", [resellerId]);
+  // Fetch full reseller record from DB with sensitive fields decrypted
+  const key = encryptionKey();
+  const { rows } = await pool.query(selectResellerSql("$2", "WHERE id = $1"), [resellerId, key]);
   if (!rows.length) throw new Error(`Reseller ${resellerId} not found`);
   const reseller = rows[0];
 
@@ -145,8 +147,9 @@ async function handleResellerSubmitted(payload) {
 async function handleNdaCompleted(payload) {
   const { resellerId, envelopeId, contactEmail, contactFirstName, contactLastName, legalCompanyName } = payload;
 
-  // Fetch reseller
-  const { rows } = await pool.query("SELECT * FROM resellers WHERE id = $1", [resellerId]);
+  // Fetch reseller with sensitive fields decrypted
+  const key = encryptionKey();
+  const { rows } = await pool.query(selectResellerSql("$2", "WHERE id = $1"), [resellerId, key]);
   if (!rows.length) throw new Error(`Reseller ${resellerId} not found`);
   const reseller = rows[0];
 
@@ -266,11 +269,14 @@ async function pollPendingAgreements() {
  * even when the Service Bus push subscription silently drops.
  */
 async function pollStuckSubmissions() {
+  const key = encryptionKey();
   const { rows } = await pool.query(
     `SELECT id, legal_company_name, contact_email, contact_first_name, contact_last_name,
-            ein, nda_signer_first_name, nda_signer_last_name, nda_signer_email
+            pgp_sym_decrypt(ein, $1)::text AS ein,
+            nda_signer_first_name, nda_signer_last_name, nda_signer_email
      FROM resellers
-     WHERE status = 'Initiated' AND created_at < NOW() - INTERVAL '2 minutes'`
+     WHERE status = 'Initiated' AND created_at < NOW() - INTERVAL '2 minutes'`,
+    [key]
   );
 
   console.log(`[worker] pollStuckSubmissions: ${rows.length} stuck record(s)`);
