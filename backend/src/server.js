@@ -41,8 +41,19 @@ const PORT = process.env.PORT || 4000;
 async function start() {
   checkEnv();
   await checkDb();
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`[startup] AETI backend running on port ${PORT}`);
+  });
+
+  process.on("SIGTERM", () => {
+    console.log("[shutdown] SIGTERM received — closing server");
+    server.close(() => {
+      pool.end()
+        .then(() => { console.log("[shutdown] Graceful shutdown complete"); process.exit(0); })
+        .catch(() => process.exit(1));
+    });
+    // Force exit after 10s if connections don't drain
+    setTimeout(() => { console.warn("[shutdown] Forced exit after timeout"); process.exit(1); }, 10000).unref();
   });
 }
 

@@ -43,13 +43,14 @@ async function withRetry(fn, label) {
     try {
       return await fn();
     } catch (err) {
-      const detail = err.response?.body || err.response?.data || err.message;
+      const status = err.response?.status;
+      const msg = err.message;
       if (attempt === MAX_RETRIES) {
-        console.error(`[worker] ${label} failed after ${MAX_RETRIES} attempts:`, JSON.stringify(detail));
+        console.error(`[worker] ${label} failed after ${MAX_RETRIES} attempts: status=${status ?? "none"} msg=${msg}`);
         throw err;
       }
       const delay = RETRY_BASE_MS * Math.pow(2, attempt - 1);
-      console.warn(`[worker] ${label} attempt ${attempt} failed. Retrying in ${delay}ms...`, JSON.stringify(detail));
+      console.warn(`[worker] ${label} attempt ${attempt} failed: status=${status ?? "none"} msg=${msg}. Retrying in ${delay}ms...`);
       await sleep(delay);
     }
   }
@@ -395,6 +396,14 @@ http.createServer((req, res) => {
 run().catch((err) => {
   console.error("[worker] Fatal error:", err);
   process.exit(1);
+});
+
+process.on("SIGTERM", () => {
+  console.log("[shutdown] SIGTERM received — draining DB pool and exiting");
+  pool.end()
+    .then(() => { console.log("[shutdown] Graceful shutdown complete"); process.exit(0); })
+    .catch(() => process.exit(1));
+  setTimeout(() => { console.warn("[shutdown] Forced exit after timeout"); process.exit(0); }, 10000).unref();
 });
 
 // Catch AMQP/Service Bus timeout errors and other unhandled exceptions

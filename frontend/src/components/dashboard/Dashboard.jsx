@@ -379,21 +379,28 @@ export default function Dashboard() {
     }
     setLoading(true);
     setError(null);
-    try {
-      const { data } = await axios.get(`${import.meta.env.VITE_API_BASE_URL || ""}/api/dashboard/resellers`, {
-        headers: authHeaders(),
-      });
-      setResellers(data);
-    } catch (err) {
-      if (err.response?.status === 401) {
-        _token = null;
-        setError("unauthorized");
-      } else {
-        setError(err.message || "Failed to load data.");
+    let lastErr;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 1000 * attempt));
+      try {
+        const { data } = await axios.get(`${import.meta.env.VITE_API_BASE_URL || ""}/api/dashboard/resellers`, {
+          headers: authHeaders(),
+        });
+        setResellers(data);
+        setLoading(false);
+        return;
+      } catch (err) {
+        if (err.response?.status === 401) {
+          _token = null;
+          setError("unauthorized");
+          setLoading(false);
+          return;
+        }
+        lastErr = err;
       }
-    } finally {
-      setLoading(false);
     }
+    setError(lastErr?.message || "Failed to load data.");
+    setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
