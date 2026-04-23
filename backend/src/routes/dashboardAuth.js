@@ -2,6 +2,7 @@ const express = require("express");
 const rateLimit = require("express-rate-limit");
 const pool = require("../db");
 const { hashPassword, verifyPassword, signToken } = require("../services/dashboardAuth");
+const requireDashboardAuth = require("../middleware/requireDashboardAuth");
 
 // 5 attempts per hour per IP — create-user is a rare admin operation
 const createUserLimiter = rateLimit({
@@ -75,6 +76,27 @@ router.post("/create-user", createUserLimiter, async (req, res, next) => {
     if (err.code === "23505") {
       return res.status(422).json({ error: "A user with that email already exists." });
     }
+    next(err);
+  }
+});
+
+// POST /api/dashboard/auth/change-password  (requires JWT)
+router.post("/change-password", requireDashboardAuth, async (req, res, next) => {
+  try {
+    const newPassword = req.body.newPassword || "";
+    if (newPassword.length < 12) {
+      return res.status(422).json({ error: "Password must be at least 12 characters." });
+    }
+
+    const passwordHash = await hashPassword(newPassword);
+    await pool.query(
+      "UPDATE dashboard_users SET password_hash = $1 WHERE id = $2",
+      [passwordHash, req.dashboardUser.id]
+    );
+
+    console.log(`[dashboard] Password changed for user=${req.dashboardUser.email}`);
+    res.json({ changed: true });
+  } catch (err) {
     next(err);
   }
 });

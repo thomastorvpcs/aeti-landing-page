@@ -364,6 +364,75 @@ function DetailModal({ reseller, onClose, onDelete }) {
 }
 
 
+function ChangePasswordModal({ onClose }) {
+  const [newPassword, setNewPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(false);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (newPassword !== confirm) { setError("Passwords do not match."); return; }
+    if (newPassword.length < 12) { setError("Password must be at least 12 characters."); return; }
+    setLoading(true);
+    setError(null);
+    try {
+      await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL || ""}/api/dashboard/auth/change-password`,
+        { newPassword },
+        { headers: authHeaders() }
+      );
+      setSuccess(true);
+    } catch (err) {
+      setError(err.response?.data?.error || "Failed — try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
+        <h2 className="text-base font-bold text-brand-navy mb-4">Change password</h2>
+        {success ? (
+          <div className="text-center py-4">
+            <p className="text-sm text-green-600 font-medium mb-4">Password updated successfully.</p>
+            <button onClick={onClose} className="btn-primary w-full">Close</button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="New password (min 12 characters)"
+              className="form-input"
+              required
+              autoFocus
+            />
+            <input
+              type="password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              placeholder="Confirm new password"
+              className="form-input"
+              required
+            />
+            {error && <p className="text-sm text-red-500">{error}</p>}
+            <div className="flex gap-2 pt-1">
+              <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
+              <button type="submit" disabled={loading} className="btn-primary flex-1">
+                {loading ? "Saving…" : "Save password"}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [resellers, setResellers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -371,6 +440,7 @@ export default function Dashboard() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [selected, setSelected] = useState(null);
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   const load = useCallback(async () => {
     if (!_token) {
@@ -512,6 +582,9 @@ export default function Dashboard() {
               </svg>
               Refresh
             </button>
+            <button onClick={() => setShowChangePassword(true)} className="btn-secondary text-sm px-4 py-2">
+              Change password
+            </button>
             <button onClick={handleLogout} className="btn-secondary text-sm px-4 py-2">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -644,6 +717,7 @@ export default function Dashboard() {
         onClose={() => setSelected(null)}
         onDelete={() => { setSelected(null); load(); }}
       />
+      {showChangePassword && <ChangePasswordModal onClose={() => setShowChangePassword(false)} />}
     </div>
   );
 }
