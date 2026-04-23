@@ -1,5 +1,22 @@
 require("dotenv").config();
 
+// ─── Required environment variables ───────────────────────────────────────────
+const REQUIRED_ENV = [
+  "DB_ENCRYPTION_KEY",
+  "AZURE_STORAGE_CONNECTION_STRING",
+  "AZURE_SERVICE_BUS_CONNECTION_STRING",
+  "SENDGRID_API_KEY",
+  "SENDGRID_FROM_EMAIL",
+  "ACROBAT_CLIENT_ID",
+];
+
+const missingEnv = REQUIRED_ENV.filter((k) => !process.env[k]);
+if (missingEnv.length > 0) {
+  console.error("[startup] Missing required environment variables:", missingEnv.join(", "));
+  process.exit(1);
+}
+console.log("[startup] Environment variables OK");
+
 const http = require("http");
 const pool = require("../db");
 const { encryptionKey, selectResellerSql } = require("../db/crypto");
@@ -306,6 +323,15 @@ async function pollStuckSubmissions() {
 // ─── Main polling loop ──────────────────────────────────────────────────────────
 
 async function run() {
+  // Verify DB is reachable before subscribing to the queue
+  try {
+    await pool.query("SELECT 1");
+    console.log("[startup] Database connection OK");
+  } catch (err) {
+    console.error("[startup] Database connection failed:", err.message);
+    process.exit(1);
+  }
+
   console.log("[worker] Onboarding worker started. Subscribing to Service Bus queue...");
 
   // Poll Acrobat Sign every 5 minutes as fallback for missed webhook events
