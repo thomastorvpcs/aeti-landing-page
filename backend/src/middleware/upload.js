@@ -7,7 +7,12 @@ const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
-  limits: { fileSize: MAX_SIZE },
+  limits: {
+    fileSize: MAX_SIZE,
+    files: 2,        // W-9 and bank letter only
+    fields: 50,      // reasonable upper bound for form fields
+    fieldSize: 10 * 1024, // 10 KB per text field
+  },
   fileFilter(_req, file, cb) {
     if (ALLOWED_TYPES.includes(file.mimetype)) {
       cb(null, true);
