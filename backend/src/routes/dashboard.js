@@ -6,9 +6,17 @@ const { sendReminder, cancelAgreement, sendNdaAgreement } = require("../services
 const { enqueue } = require("../services/queue");
 const requireDashboardAuth = require("../middleware/requireDashboardAuth");
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const router = express.Router();
 
 router.use(requireDashboardAuth);
+
+// Reject any route with a non-UUID :id before it reaches the handler
+router.param("id", (req, res, next, id) => {
+  if (!UUID_RE.test(id)) return res.status(400).json({ error: "Invalid ID format" });
+  next();
+});
 
 router.get("/resellers", async (_req, res, next) => {
   try {
