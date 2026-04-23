@@ -1,6 +1,16 @@
 const express = require("express");
+const rateLimit = require("express-rate-limit");
 const pool = require("../db");
 const { hashPassword, verifyPassword, signToken } = require("../services/dashboardAuth");
+
+// 5 attempts per hour per IP — create-user is a rare admin operation
+const createUserLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many account creation attempts. Try again later." },
+});
 
 const router = express.Router();
 
@@ -36,7 +46,7 @@ router.post("/login", async (req, res, next) => {
 });
 
 // POST /api/dashboard/auth/create-user  (admin-only)
-router.post("/create-user", async (req, res, next) => {
+router.post("/create-user", createUserLimiter, async (req, res, next) => {
   try {
     const adminSecret = process.env.ADMIN_SECRET;
     if (!adminSecret || req.headers["x-admin-secret"] !== adminSecret) {
