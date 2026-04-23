@@ -1,6 +1,6 @@
 const express = require("express");
 const pool = require("../db");
-const { getPresignedUrl, blobExists, deleteFolder } = require("../services/s3");
+const { getPresignedUrl, blobExists, deleteFolder } = require("../services/storage");
 const { sendReminder, cancelAgreement, sendNdaAgreement } = require("../services/acrobat-sign");
 const { enqueue } = require("../services/queue");
 const requireDashboardAuth = require("../middleware/requireDashboardAuth");

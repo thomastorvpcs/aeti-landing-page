@@ -3,7 +3,7 @@ require("dotenv").config();
 const http = require("http");
 const pool = require("../db");
 const { subscribe, enqueue } = require("../services/queue");
-const { uploadFile, downloadFile, getPresignedUrl } = require("../services/s3");
+const { uploadFile, downloadFile, getPresignedUrl } = require("../services/storage");
 const { downloadSignedNda, getAgreementStatus } = require("../services/acrobat-sign");
 const { createVendor } = require("../services/netsuite");
 const { sendWelcomeEmail, sendInternalAlert } = require("../services/sendgrid");
@@ -56,7 +56,7 @@ async function handleResellerSubmitted(payload) {
   if (!rows.length) throw new Error(`Reseller ${resellerId} not found`);
   const reseller = rows[0];
 
-  // 1. Generate and upload vendor setup form PDF to S3
+  // 1. Generate and upload vendor setup form PDF to Azure Blob Storage
   const vendorFormPdf = await withRetry(
     () => generateVendorSetupForm(reseller),
     "generateVendorSetupForm"
@@ -64,9 +64,9 @@ async function handleResellerSubmitted(payload) {
   const vendorFormKey = `resellers/${resellerId}/vendor_setup_form.pdf`;
   await withRetry(
     () => uploadFile({ key: vendorFormKey, buffer: vendorFormPdf, contentType: "application/pdf" }),
-    "S3 uploadFile(vendorSetupForm)"
+    "uploadFile(vendorSetupForm)"
   );
-  console.log(`[worker] Vendor setup form uploaded to S3: ${vendorFormKey}`);
+  console.log(`[worker] Vendor setup form uploaded: ${vendorFormKey}`);
 
   // Generate 15-minute SAS URLs for all three documents — NetSuite downloads immediately
   const [w9Url, bankLetterUrl, vendorSetupFormUrl] = await Promise.all([
@@ -167,14 +167,14 @@ async function handleNdaCompleted(payload) {
     "Acrobat Sign downloadSignedNda"
   );
 
-  // 2. Archive to S3
+  // 2. Archive to Azure Blob Storage
   const ndaKey = `resellers/${resellerId}/signed_nda.pdf`;
   await withRetry(
     () => uploadFile({ key: ndaKey, buffer: signedNdaPdf, contentType: "application/pdf" }),
-    "S3 uploadFile(signedNda)"
+    "uploadFile(signedNda)"
   );
 
-  // 3. Update DB with NDA S3 key and advance status to NDA Complete
+  // 3. Update DB with NDA blob key and advance status to NDA Complete
   await pool.query(
     "UPDATE resellers SET signed_nda_s3_key = $1, status = 'NDA Complete', updated_at = NOW() WHERE id = $2",
     [ndaKey, resellerId]

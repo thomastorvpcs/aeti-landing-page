@@ -13,18 +13,5 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  localstack:
-    image: localstack/localstack:3
-    restart: unless-stopped
-    environment:
-      SERVICES: s3,sqs
-      DEFAULT_REGION: us-east-1
-      AWS_DEFAULT_REGION: us-east-1
-    ports:
-      - "4566:4566"
-    volumes:
-      - localstack_data:/var/lib/localstack
-
 volumes:
   postgres_data:
-  localstack_data:

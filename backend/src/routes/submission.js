@@ -2,7 +2,7 @@ const express = require("express");
 const { v4: uuidv4 } = require("uuid");
 const upload = require("../middleware/upload");
 const pool = require("../db");
-const { uploadFile } = require("../services/s3");
+const { uploadFile } = require("../services/storage");
 const { enqueue } = require("../services/queue");
 
 const router = express.Router();
@@ -94,7 +94,7 @@ router.post("/", upload.fields([{ name: "w9", maxCount: 1 }, { name: "bankLetter
       return res.status(422).json({ error: "Bank letter is required." });
     }
 
-    // Reuse existing ID if this EIN has already been submitted, so S3 keys stay consistent
+    // Reuse existing ID if this EIN has already been submitted, so storage keys stay consistent
     const existing = await pool.query("SELECT id FROM resellers WHERE ein = $1", [ein.trim()]);
     const resellerId = existing.rows[0]?.id || uuidv4();
 
@@ -103,7 +103,7 @@ router.post("/", upload.fields([{ name: "w9", maxCount: 1 }, { name: "bankLetter
     const bankLetterExt = bankLetterUpload.originalname.split(".").pop();
     const bankLetterKey = `resellers/${resellerId}/bank_letter.${bankLetterExt}`;
 
-    // Upload W-9 and bank letter to S3
+    // Upload W-9 and bank letter to Azure Blob Storage
     await uploadFile({
       key: w9Key,
       buffer: w9FileUpload.buffer,
