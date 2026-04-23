@@ -13,6 +13,10 @@ const createUserLimiter = rateLimit({
   message: { error: "Too many account creation attempts. Try again later." },
 });
 
+function isValidPassword(p) {
+  return p.length >= 8 && /[0-9]/.test(p) && /[^A-Za-z0-9]/.test(p);
+}
+
 const router = express.Router();
 
 // POST /api/dashboard/auth/login
@@ -61,8 +65,8 @@ router.post("/create-user", createUserLimiter, async (req, res, next) => {
     if (!email || !name || !password) {
       return res.status(422).json({ error: "email, name, and password are required." });
     }
-    if (password.length < 12) {
-      return res.status(422).json({ error: "Password must be at least 12 characters." });
+    if (!isValidPassword(password)) {
+      return res.status(422).json({ error: "Password must be at least 8 characters and include a number and a special character." });
     }
 
     const passwordHash = await hashPassword(password);
@@ -84,8 +88,8 @@ router.post("/create-user", createUserLimiter, async (req, res, next) => {
 router.post("/change-password", requireDashboardAuth, async (req, res, next) => {
   try {
     const newPassword = req.body.newPassword || "";
-    if (newPassword.length < 12) {
-      return res.status(422).json({ error: "Password must be at least 12 characters." });
+    if (!isValidPassword(newPassword)) {
+      return res.status(422).json({ error: "Password must be at least 8 characters and include a number and a special character." });
     }
 
     const passwordHash = await hashPassword(newPassword);

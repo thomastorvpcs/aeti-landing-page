@@ -374,7 +374,10 @@ function ChangePasswordModal({ onClose }) {
   async function handleSubmit(e) {
     e.preventDefault();
     if (newPassword !== confirm) { setError("Passwords do not match."); return; }
-    if (newPassword.length < 12) { setError("Password must be at least 12 characters."); return; }
+    if (newPassword.length < 8 || !/[0-9]/.test(newPassword) || !/[^A-Za-z0-9]/.test(newPassword)) {
+      setError("Password must be at least 8 characters and include a number and a special character.");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -406,7 +409,7 @@ function ChangePasswordModal({ onClose }) {
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="New password (min 12 characters)"
+              placeholder="New password (min 8 chars, 1 number, 1 special)"
               className="form-input"
               required
               autoFocus
