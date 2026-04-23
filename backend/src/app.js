@@ -49,19 +49,6 @@ app.use("/acrobat/webhook", acrobatWebhookRouter);
 app.use("/api/dashboard/auth", dashboardLoginRateLimiter, dashboardAuthRouter);
 app.use("/api/dashboard", dashboardRouter);
 
-// Temporary: unauthenticated test endpoint for PDF layout checking
-app.get("/test-letter", async (_req, res, next) => {
-  try {
-    const { generateAuthorizationLetter } = require("./services/pdf");
-    const pdf = await generateAuthorizationLetter({ legalCompanyName: "Test Company LLC" });
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", 'inline; filename="test_letter.pdf"');
-    res.send(pdf);
-  } catch (err) {
-    next(err);
-  }
-});
-
 // 404 for any unmatched routes
 app.use((_req, res) => {
   res.status(404).json({ error: "Not found" });
