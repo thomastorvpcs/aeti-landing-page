@@ -19,13 +19,14 @@ app.use(helmet({ contentSecurityPolicy: false }));
 
 // CORS — only needed for API routes, not static assets
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || "").split(",").filter(Boolean);
+if (allowedOrigins.length === 0) {
+  console.warn("[app] WARNING: ALLOWED_ORIGINS is not set — all CORS requests will be denied");
+}
 app.use(
   cors({
     origin: (origin, cb) => {
       // Allow requests with no origin (same-origin, webhooks, health checks)
       if (!origin) return cb(null, true);
-      // If no allowlist configured, allow all
-      if (allowedOrigins.length === 0) return cb(null, true);
       if (allowedOrigins.includes(origin)) return cb(null, true);
       cb(new Error("Not allowed by CORS"));
     },
