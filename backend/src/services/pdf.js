@@ -42,7 +42,7 @@ function generateAuthorizationLetter({ legalCompanyName }) {
 
     // Letterhead image centered at top
     doc.image(LETTERHEAD_PATH, 60, 40, { width: 492, align: "center" });
-    doc.y = 155; // Start content below the letterhead regardless of image height
+    doc.y = 200; // Start content below the letterhead regardless of image height
 
     // Date
     const today = new Date();
