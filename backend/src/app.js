@@ -2,7 +2,6 @@ require("dotenv").config();
 const express = require("express");
 const helmet = require("helmet");
 const cors = require("cors");
-const path = require("path");
 const { globalRateLimiter, submissionRateLimiter, dashboardLoginRateLimiter, dashboardApiRateLimiter } = require("./middleware/rate-limit");
 const submissionRouter = require("./routes/submission");
 const acrobatWebhookRouter = require("./routes/acrobat-webhook");

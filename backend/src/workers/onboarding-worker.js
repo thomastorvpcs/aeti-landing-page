@@ -96,47 +96,42 @@ async function handleResellerSubmitted(payload) {
     getPresignedUrl(vendorFormKey, 900),
   ]);
 
-  // 2. Create NetSuite vendor via Restlet (skip if not configured)
-  let netsuiteVendorId = null;
-  if (process.env.NETSUITE_RESTLET_URL) {
-    netsuiteVendorId = await withRetry(
-      () => createVendor({
-        resellerId,
-        legalCompanyName,
-        dba: reseller.dba,
-        ein,
-        entityType: reseller.entity_type,
-        addressStreet: reseller.address_street,
-        addressCity: reseller.address_city,
-        addressState: reseller.address_state,
-        addressZip: reseller.address_zip,
-        contactFirstName,
-        contactLastName,
-        contactTitle: reseller.contact_title,
-        contactEmail,
-        contactPhone: reseller.contact_phone,
-        ndaSignerFirstName: reseller.nda_signer_first_name,
-        ndaSignerLastName: reseller.nda_signer_last_name,
-        ndaSignerTitle: reseller.nda_signer_title,
-        ndaSignerEmail: reseller.nda_signer_email,
-        ndaSignerPhone: reseller.nda_signer_phone,
-        financeContactName: reseller.finance_contact_name,
-        financeContactEmail: reseller.finance_contact_email,
-        financeContactPhone: reseller.finance_contact_phone,
-        bankName: reseller.bank_name,
-        bankAba: reseller.bank_aba,
-        bankAccountNumber: reseller.bank_account_number,
-        bankSwift: reseller.bank_swift,
-        submissionDate: reseller.created_at?.toISOString().slice(0, 10),
-        w9Url,
-        bankLetterUrl,
-        vendorSetupFormUrl,
-      }),
-      "NetSuite createVendor"
-    );
-  } else {
-    console.warn("[worker] NETSUITE_RESTLET_URL not set — skipping NetSuite steps");
-  }
+  // 2. Create NetSuite vendor via Restlet
+  const netsuiteVendorId = await withRetry(
+    () => createVendor({
+      resellerId,
+      legalCompanyName,
+      dba: reseller.dba,
+      ein,
+      entityType: reseller.entity_type,
+      addressStreet: reseller.address_street,
+      addressCity: reseller.address_city,
+      addressState: reseller.address_state,
+      addressZip: reseller.address_zip,
+      contactFirstName,
+      contactLastName,
+      contactTitle: reseller.contact_title,
+      contactEmail,
+      contactPhone: reseller.contact_phone,
+      ndaSignerFirstName: reseller.nda_signer_first_name,
+      ndaSignerLastName: reseller.nda_signer_last_name,
+      ndaSignerTitle: reseller.nda_signer_title,
+      ndaSignerEmail: reseller.nda_signer_email,
+      ndaSignerPhone: reseller.nda_signer_phone,
+      financeContactName: reseller.finance_contact_name,
+      financeContactEmail: reseller.finance_contact_email,
+      financeContactPhone: reseller.finance_contact_phone,
+      bankName: reseller.bank_name,
+      bankAba: reseller.bank_aba,
+      bankAccountNumber: reseller.bank_account_number,
+      bankSwift: reseller.bank_swift,
+      submissionDate: reseller.created_at?.toISOString().slice(0, 10),
+      w9Url,
+      bankLetterUrl,
+      vendorSetupFormUrl,
+    }),
+    "NetSuite createVendor"
+  );
 
   // 4. Update DB — hold at "NDA Approval Pending" until a dashboard user approves and sends the NDA
   await pool.query(
@@ -155,13 +150,11 @@ async function handleResellerSubmitted(payload) {
 
 /**
  * NDA_COMPLETED
- * Triggered by DocuSign webhook when envelope is fully signed.
- * - Download signed NDA PDF from DocuSign
- * - Archive to S3
- * - Attach to NetSuite vendor record
- * - Create NetSuite Task for Legal
+ * Triggered by Acrobat Sign webhook or polling when agreement is fully signed.
+ * - Download signed NDA PDF from Acrobat Sign
+ * - Archive to Azure Blob Storage
  * - Update status to "NDA Complete"
- * - Send welcome email with signed NDA + program letter
+ * - Send welcome email with signed NDA + authorization letter
  */
 async function handleNdaCompleted(payload) {
   const { resellerId, envelopeId, contactEmail, contactFirstName, contactLastName, legalCompanyName } = payload;
@@ -202,13 +195,13 @@ async function handleNdaCompleted(payload) {
     [ndaKey, resellerId]
   );
 
-  // 5. Generate authorization letter
+  // 4. Generate authorization letter
   const programLetterPdf = await withRetry(
     () => generateAuthorizationLetter({ legalCompanyName }),
     "generateAuthorizationLetter"
   );
 
-  // 8. Send welcome email with signed NDA and authorization letter attached
+  // 5. Send welcome email with signed NDA and authorization letter attached
   await withRetry(
     () => sendWelcomeEmail({
       to: contactEmail,
