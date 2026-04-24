@@ -10,6 +10,7 @@ const MIGRATIONS = [
   "004_add_reseller_signed_at.sql",
   "005_dashboard_users.sql",
   "006_encrypt_sensitive_fields.sql",
+  "007_audit_log.sql",
 ];
 
 async function migrate() {
