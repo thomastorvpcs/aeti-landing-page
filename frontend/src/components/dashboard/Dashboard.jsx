@@ -436,6 +436,87 @@ function ChangePasswordModal({ onClose }) {
   );
 }
 
+function AuditLogTab() {
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    axios.get(`${import.meta.env.VITE_API_BASE_URL || ""}/api/dashboard/audit-log`, {
+      headers: authHeaders(),
+    })
+      .then(({ data }) => setLogs(data))
+      .catch(() => setError("Failed to load audit log."))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filtered = logs.filter((l) => {
+    const q = search.toLowerCase();
+    return !q ||
+      l.action?.toLowerCase().includes(q) ||
+      l.reseller_name?.toLowerCase().includes(q) ||
+      l.performed_by?.toLowerCase().includes(q);
+  });
+
+  return (
+    <div>
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Search action, reseller or user…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="form-input max-w-xs"
+        />
+      </div>
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center py-20 text-gray-400">
+            <svg className="animate-spin h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            Loading…
+          </div>
+        ) : error ? (
+          <div className="text-center py-20 text-red-500 text-sm">{error}</div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-20 text-gray-400 text-sm">No audit log entries found.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50 text-left">
+                  <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Timestamp</th>
+                  <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Action</th>
+                  <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Reseller</th>
+                  <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Performed by</th>
+                  <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Details</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {filtered.map((l) => (
+                  <tr key={l.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-5 py-3 text-xs text-gray-500 whitespace-nowrap">
+                      {formatDateTime(l.created_at)}
+                    </td>
+                    <td className="px-5 py-3 text-xs font-medium text-gray-800">{l.action}</td>
+                    <td className="px-5 py-3 text-xs text-gray-500 hidden sm:table-cell">{l.reseller_name || "—"}</td>
+                    <td className="px-5 py-3 text-xs text-gray-500 hidden md:table-cell">{l.performed_by}</td>
+                    <td className="px-5 py-3 text-xs text-gray-400 hidden lg:table-cell">{l.details || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+      <p className="mt-3 text-xs text-gray-400">Showing last 500 entries.</p>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [resellers, setResellers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -444,6 +525,7 @@ export default function Dashboard() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [selected, setSelected] = useState(null);
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [activeTab, setActiveTab] = useState("resellers");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
@@ -603,6 +685,31 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Tab switcher */}
+        <div className="mb-6 flex gap-1 border-b border-gray-200">
+          {[
+            { id: "resellers", label: "Resellers" },
+            { id: "audit-log", label: "Audit log" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                activeTab === tab.id
+                  ? "border-brand-blue text-brand-blue"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === "audit-log" && <AuditLogTab />}
+
+        {/* Resellers tab content */}
+        {activeTab === "resellers" && <>
+
         {/* Stat cards — click to filter */}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-7 mb-6">
           {[
@@ -760,6 +867,8 @@ export default function Dashboard() {
             </div>
           </div>
         )}
+
+        </>}
       </div>
 
       <DetailModal
