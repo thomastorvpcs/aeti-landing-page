@@ -663,12 +663,12 @@ export default function Dashboard() {
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50 text-left">
                     <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Company</th>
+                    <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">EIN</th>
                     <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Contact</th>
                     <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                     <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Submitted</th>
                     <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Reseller signed</th>
                     <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">PCS countersigned</th>
-                    <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">EIN</th>
                     <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">NetSuite ID</th>
                     <th className="px-5 py-3"></th>
                   </tr>
@@ -679,6 +679,9 @@ export default function Dashboard() {
                       <td className="px-5 py-4">
                         <p className="font-semibold text-gray-900">{r.legal_company_name}</p>
                         {r.dba && <p className="text-xs text-gray-400">DBA: {r.dba}</p>}
+                      </td>
+                      <td className="px-5 py-4 hidden sm:table-cell text-gray-500 text-xs font-mono">
+                        {r.ein || "—"}
                       </td>
                       <td className="px-5 py-4 hidden sm:table-cell">
                         <p className="text-gray-700">{r.contact_first_name} {r.contact_last_name}</p>
@@ -698,9 +701,6 @@ export default function Dashboard() {
                       <td className="px-5 py-4 hidden md:table-cell text-gray-500 text-xs">
                         {formatDate(r.signed_at)}
                         {formatTime(r.signed_at) && <p className="text-gray-400">{formatTime(r.signed_at)}</p>}
-                      </td>
-                      <td className="px-5 py-4 hidden lg:table-cell text-gray-500 text-xs font-mono">
-                        {r.ein || "—"}
                       </td>
                       <td className="px-5 py-4 hidden lg:table-cell text-gray-500 text-xs font-mono">
                         {r.netsuite_vendor_id || "—"}
