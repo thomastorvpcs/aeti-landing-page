@@ -85,6 +85,17 @@ router.post("/", upload.fields([{ name: "w9", maxCount: 1 }, { name: "bankLetter
       return res.status(422).json({ error: "Missing required fields.", fields: missing });
     }
 
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const invalidEmails = [
+      ["contactEmail", contactEmail],
+      ["financeContactEmail", financeContactEmail],
+      ...(!ndaSame && ndaSignerEmail ? [["ndaSignerEmail", ndaSignerEmail]] : []),
+    ].filter(([, v]) => v && !EMAIL_RE.test(v)).map(([k]) => k);
+
+    if (invalidEmails.length > 0) {
+      return res.status(422).json({ error: "Invalid email address.", fields: invalidEmails });
+    }
+
     const w9FileUpload = req.files?.w9?.[0];
     const bankLetterUpload = req.files?.bankLetter?.[0];
 

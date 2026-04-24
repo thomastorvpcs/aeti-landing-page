@@ -8,6 +8,7 @@ const REQUIRED_ENV = [
   "SENDGRID_API_KEY",
   "SENDGRID_FROM_EMAIL",
   "ACROBAT_CLIENT_ID",
+  "NETSUITE_RESTLET_URL",
 ];
 
 const missingEnv = REQUIRED_ENV.filter((k) => !process.env[k]);
