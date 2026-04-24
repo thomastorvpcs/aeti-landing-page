@@ -85,6 +85,11 @@ router.post("/", upload.fields([{ name: "w9", maxCount: 1 }, { name: "bankLetter
       return res.status(422).json({ error: "Missing required fields.", fields: missing });
     }
 
+    const EIN_RE = /^\d{2}-?\d{7}$/;
+    if (!EIN_RE.test(ein.trim())) {
+      return res.status(422).json({ error: "Invalid EIN format.", fields: ["ein"] });
+    }
+
     const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const invalidEmails = [
       ["contactEmail", contactEmail],
