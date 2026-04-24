@@ -444,6 +444,8 @@ export default function Dashboard() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [selected, setSelected] = useState(null);
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   const load = useCallback(async () => {
     if (!_token) {
@@ -518,6 +520,10 @@ export default function Dashboard() {
       r.ein?.replace(/-/g, "").includes(q.replace(/-/g, ""));
     return matchStatus && matchSearch;
   });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const paginated = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   const counts = {
     total: resellers.length,
@@ -612,7 +618,7 @@ export default function Dashboard() {
             return (
               <button
                 key={label}
-                onClick={() => setStatusFilter(active ? "All" : filter)}
+                onClick={() => { setStatusFilter(active ? "All" : filter); setPage(1); }}
                 className={`text-left bg-white rounded-2xl border shadow-sm px-5 py-4 transition-all ${
                   active
                     ? `border-transparent ring-2 ${ring} shadow-md`
@@ -632,7 +638,7 @@ export default function Dashboard() {
             type="text"
             placeholder="Search company, email or EIN…"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="form-input max-w-xs"
           />
         </div>
@@ -667,7 +673,7 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {filtered.map((r) => (
+                  {paginated.map((r) => (
                     <tr key={r.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-5 py-4">
                         <p className="font-semibold text-gray-900">{r.legal_company_name}</p>
@@ -710,9 +716,45 @@ export default function Dashboard() {
           )}
         </div>
 
-        <p className="mt-4 text-xs text-gray-400 text-center">
-          {!loading && `${filtered.length} of ${resellers.length} resellers`}
-        </p>
+        {!loading && (
+          <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p className="text-xs text-gray-400">
+              {filtered.length === 0 ? "No resellers" : `${(safePage - 1) * pageSize + 1}–${Math.min(safePage * pageSize, filtered.length)} of ${filtered.length} resellers`}
+              {filtered.length !== resellers.length && ` (filtered from ${resellers.length})`}
+            </p>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs text-gray-400">Per page</label>
+                <select
+                  value={pageSize}
+                  onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+                  className="text-xs border border-gray-200 rounded-lg px-2 py-1 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                >
+                  {[10, 20, 50].map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={safePage === 1}
+                  className="px-2.5 py-1 text-xs rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Prev
+                </button>
+                <span className="text-xs text-gray-500 px-2">
+                  {safePage} / {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={safePage === totalPages}
+                  className="px-2.5 py-1 text-xs rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <DetailModal
