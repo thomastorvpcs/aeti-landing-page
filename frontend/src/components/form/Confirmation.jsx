@@ -81,10 +81,10 @@ export default function Confirmation({ formData }) {
         <p className="text-sm text-gray-600">
           Questions? Contact your partner success team at{" "}
           <a
-            href="mailto:resellers@pcsww.com"
+            href="mailto:abtiquestions@pcsww.com"
             className="text-brand-blue font-medium hover:underline"
           >
-            resellers@pcsww.com
+            abtiquestions@pcsww.com
           </a>
         </p>
       </div>

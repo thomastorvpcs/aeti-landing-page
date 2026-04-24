@@ -215,7 +215,7 @@ export default function OnboardingForm() {
     } catch (err) {
       const msg =
         err.response?.data?.error ||
-        "Something went wrong. Please try again or contact resellers@pcsww.com.";
+        "Something went wrong. Please try again or contact abtiquestions@pcsww.com.";
       setSubmitError(msg);
     } finally {
       setSubmitting(false);

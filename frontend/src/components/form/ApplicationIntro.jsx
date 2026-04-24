@@ -192,8 +192,8 @@ export default function ApplicationIntro({ onStart }) {
         </button>
         <p className="mt-5 text-sm text-gray-400">
           Questions before you apply?{" "}
-          <a href="mailto:resellers@pcsww.com" className="text-brand-blue hover:underline">
-            resellers@pcsww.com
+          <a href="mailto:abtiquestions@pcsww.com" className="text-brand-blue hover:underline">
+            abtiquestions@pcsww.com
           </a>
         </p>
       </div>
