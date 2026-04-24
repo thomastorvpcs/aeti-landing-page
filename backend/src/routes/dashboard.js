@@ -55,7 +55,7 @@ router.get("/resellers", async (_req, res, next) => {
   }
 });
 
-router.get("/resellers/:id/files", async (req, res, next) => {
+router.get("/resellers/:id/files", dashboardActionRateLimiter, async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       "SELECT id, w9_s3_key, bank_letter_s3_key, signed_nda_s3_key FROM resellers WHERE id = $1",
@@ -148,7 +148,7 @@ router.post("/resellers/:id/resend-nda", dashboardActionRateLimiter, async (req,
   }
 });
 
-router.post("/resellers/:id/cancel-nda", async (req, res, next) => {
+router.post("/resellers/:id/cancel-nda", dashboardActionRateLimiter, async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       "SELECT status, docusign_envelope_id FROM resellers WHERE id = $1",
@@ -209,7 +209,7 @@ router.post("/resellers/:id/retry-completion", dashboardActionRateLimiter, async
   }
 });
 
-router.delete("/resellers/:id", async (req, res, next) => {
+router.delete("/resellers/:id", dashboardActionRateLimiter, async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       "SELECT id, status FROM resellers WHERE id = $1",
