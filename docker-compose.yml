@@ -5,9 +5,9 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: aeti
-      POSTGRES_PASSWORD: aeti_dev
-      POSTGRES_DB: aeti_onboarding
+      POSTGRES_USER: ${POSTGRES_USER:-aeti}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aeti_dev}   # Local dev only — production uses DATABASE_URL
+      POSTGRES_DB: ${POSTGRES_DB:-aeti_onboarding}
     ports:
       - "5432:5432"
     volumes:

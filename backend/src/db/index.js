@@ -11,7 +11,7 @@ const pool = new Pool(
         port: parseInt(process.env.DB_PORT || "5432"),
         database: process.env.DB_NAME || "aeti_onboarding",
         user: process.env.DB_USER || "aeti",
-        password: process.env.DB_PASSWORD || "aeti_dev",
+        password: process.env.DB_PASSWORD,
       },
   { max: 20, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000 }
 );

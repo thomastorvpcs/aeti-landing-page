@@ -99,10 +99,9 @@ router.post("/", upload.fields([{ name: "w9", maxCount: 1 }, { name: "bankLetter
     const existing = await pool.query("SELECT id FROM resellers WHERE ein_hmac = $1", [einHmac(ein.trim())]);
     const resellerId = existing.rows[0]?.id || uuidv4();
 
-    const w9Ext = w9FileUpload.originalname.split(".").pop();
-    const w9Key = `resellers/${resellerId}/w9.${w9Ext}`;
-    const bankLetterExt = bankLetterUpload.originalname.split(".").pop();
-    const bankLetterKey = `resellers/${resellerId}/bank_letter.${bankLetterExt}`;
+    const MIME_TO_EXT = { "application/pdf": "pdf", "image/jpeg": "jpg", "image/png": "png" };
+    const w9Key = `resellers/${resellerId}/w9.${MIME_TO_EXT[w9FileUpload.mimetype] || "bin"}`;
+    const bankLetterKey = `resellers/${resellerId}/bank_letter.${MIME_TO_EXT[bankLetterUpload.mimetype] || "bin"}`;
 
     // Upload W-9 and bank letter to Azure Blob Storage
     await uploadFile({
