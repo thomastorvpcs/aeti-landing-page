@@ -29,6 +29,10 @@ jobs:
         working-directory: backend
         run: npm ci --omit=dev
 
+      - name: npm audit
+        working-directory: backend
+        run: npm audit --production
+
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
@@ -53,3 +57,8 @@ jobs:
           slot-name: 'Production'
           package: .
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_1662D7CB3AF245FAB676B1AA2CD9B954 }}
+
+      - name: Health check
+        run: |
+          sleep 15
+          curl -f https://abti-api.azurewebsites.net/health || exit 1

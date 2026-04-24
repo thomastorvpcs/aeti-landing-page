@@ -20,6 +20,10 @@ function checkEnv() {
     console.error("[startup] Missing required environment variables:", missing.join(", "));
     process.exit(1);
   }
+  if (process.env.DB_ENCRYPTION_KEY.length < 32) {
+    console.error("[startup] DB_ENCRYPTION_KEY must be at least 32 characters");
+    process.exit(1);
+  }
   console.log("[startup] Environment variables OK");
 }
 
