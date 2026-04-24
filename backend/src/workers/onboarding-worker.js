@@ -369,7 +369,9 @@ async function run() {
             legalCompanyName: payload.legalCompanyName || "Unknown",
             resellerId: payload.resellerId,
             note: `NDA_COMPLETED job failed for reseller ${payload.resellerId} (${payload.legalCompanyName}) — welcome email was NOT sent. Use the dashboard to re-trigger. Error: ${err.message}`,
-          }).catch(() => {});
+          }).catch((alertErr) => {
+            console.error("[worker] Failed to send internal alert:", alertErr.message);
+          });
         }
         // Acknowledge to prevent infinite retry loop — Service Bus dead-letters after max delivery count
         await ack();
