@@ -665,10 +665,10 @@ export default function Dashboard() {
                     <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Company</th>
                     <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Contact</th>
                     <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Submitted</th>
                     <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Reseller signed</th>
                     <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">PCS countersigned</th>
                     <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">EIN</th>
-                    <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Submitted</th>
                     <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">NetSuite ID</th>
                     <th className="px-5 py-3"></th>
                   </tr>
@@ -688,6 +688,10 @@ export default function Dashboard() {
                         <StatusBadge status={r.status} />
                       </td>
                       <td className="px-5 py-4 hidden md:table-cell text-gray-500 text-xs">
+                        {formatDate(r.created_at)}
+                        {formatTime(r.created_at) && <p className="text-gray-400">{formatTime(r.created_at)}</p>}
+                      </td>
+                      <td className="px-5 py-4 hidden md:table-cell text-gray-500 text-xs">
                         {formatDate(r.reseller_signed_at)}
                         {formatTime(r.reseller_signed_at) && <p className="text-gray-400">{formatTime(r.reseller_signed_at)}</p>}
                       </td>
@@ -697,9 +701,6 @@ export default function Dashboard() {
                       </td>
                       <td className="px-5 py-4 hidden lg:table-cell text-gray-500 text-xs font-mono">
                         {r.ein || "—"}
-                      </td>
-                      <td className="px-5 py-4 hidden lg:table-cell text-gray-500 text-xs">
-                        {formatDate(r.created_at)}
                       </td>
                       <td className="px-5 py-4 hidden lg:table-cell text-gray-500 text-xs font-mono">
                         {r.netsuite_vendor_id || "—"}
