@@ -5,26 +5,13 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: aeti
-      POSTGRES_PASSWORD: aeti_dev
-      POSTGRES_DB: aeti_onboarding
+      POSTGRES_USER: ${POSTGRES_USER:-aeti}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aeti_dev}   # Local dev only — production uses DATABASE_URL
+      POSTGRES_DB: ${POSTGRES_DB:-aeti_onboarding}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  localstack:
-    image: localstack/localstack:3
-    restart: unless-stopped
-    environment:
-      SERVICES: s3,sqs
-      DEFAULT_REGION: us-east-1
-      AWS_DEFAULT_REGION: us-east-1
-    ports:
-      - "4566:4566"
-    volumes:
-      - localstack_data:/var/lib/localstack
-
 volumes:
   postgres_data:
-  localstack_data:

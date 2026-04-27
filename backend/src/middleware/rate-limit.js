@@ -33,4 +33,32 @@ const dashboardLoginRateLimiter = rateLimit({
   message: { error: "Too many login attempts. Please try again later." },
 });
 
-module.exports = { globalRateLimiter, submissionRateLimiter, dashboardLoginRateLimiter };
+// Rate limiter for authenticated dashboard API routes — keyed per user (JWT sub)
+// so limits are per-account, not per-IP (which could be shared via a proxy).
+const dashboardApiRateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 120,            // generous for normal use; blocks runaway scripts
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.dashboardUser?.id || keyGenerator(req),
+  message: { error: "Too many requests. Please slow down." },
+});
+
+// Tighter limit for state-changing actions that trigger external API calls
+// (Acrobat Sign, SendGrid) — these are billable and should not be spammable.
+const dashboardActionRateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.dashboardUser?.id || keyGenerator(req),
+  message: { error: "Too many actions. Please try again later." },
+});
+
+module.exports = {
+  globalRateLimiter,
+  submissionRateLimiter,
+  dashboardLoginRateLimiter,
+  dashboardApiRateLimiter,
+  dashboardActionRateLimiter,
+};

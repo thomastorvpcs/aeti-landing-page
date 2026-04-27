@@ -3,18 +3,21 @@ const pool = require("../db");
 const { enqueue } = require("../services/queue");
 const { getAgreementStatus } = require("../services/acrobat-sign");
 
-const router = express.Router();
+const EXPECTED_CLIENT_ID = process.env.ACROBAT_CLIENT_ID;
 
+const router = express.Router();
 
 /**
  * Acrobat Sign webhook verification.
  * Acrobat Sign sends a GET with X-AdobeSign-ClientId header.
- * Must respond 200 with the client ID in header AND body.
+ * Must respond 200 with the client ID in header AND body — but only if it matches our app.
  */
 router.get("/", (req, res) => {
   const clientId = req.headers["x-adobesign-clientid"];
-  console.log("[acrobat-webhook] GET verification received, clientId:", clientId);
-  // Echo back whatever client ID Acrobat Sign sends
+  if (!EXPECTED_CLIENT_ID || clientId !== EXPECTED_CLIENT_ID) {
+    console.warn("[acrobat-webhook] GET verification rejected — client ID mismatch");
+    return res.status(400).json({ error: "Client ID mismatch" });
+  }
   res
     .status(200)
     .set("X-AdobeSign-ClientId", clientId)
@@ -25,16 +28,15 @@ router.get("/", (req, res) => {
  * Acrobat Sign webhook event handler.
  */
 router.post("/", async (req, res) => {
-  console.log("[acrobat-webhook] POST received, headers:", JSON.stringify(req.headers));
-
   const clientId = req.headers["x-adobesign-clientid"];
-  console.log("[acrobat-webhook] POST client ID:", clientId);
-  console.log("[acrobat-webhook] body type:", typeof req.body, "isBuffer:", Buffer.isBuffer(req.body), "length:", req.body?.length);
+  if (!EXPECTED_CLIENT_ID || clientId !== EXPECTED_CLIENT_ID) {
+    console.warn("[acrobat-webhook] POST rejected — client ID mismatch");
+    return res.status(401).json({ error: "Unauthorized" });
+  }
 
   let payload;
   try {
     const raw = Buffer.isBuffer(req.body) ? req.body.toString("utf8") : JSON.stringify(req.body);
-    console.log("[acrobat-webhook] raw body:", raw);
     payload = JSON.parse(raw);
   } catch (e) {
     console.error("[acrobat-webhook] JSON parse error:", e.message);
@@ -50,7 +52,6 @@ router.post("/", async (req, res) => {
   res.status(200).json({ received: true });
 
   const agreementStatus = payload.agreement?.status;
-  console.log(`[acrobat-webhook] Agreement status: ${agreementStatus}`);
 
   const isEsigned = event === "AGREEMENT_ACTION_COMPLETED" && payload.actionType === "ESIGNED";
   const isWorkflowComplete = event === "AGREEMENT_WORKFLOW_COMPLETED";
