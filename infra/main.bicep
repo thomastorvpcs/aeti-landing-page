@@ -1,7 +1,9 @@
 targetScope = 'resourceGroup'
 
 param location string = 'eastus'
-param dbLocation string = 'eastus2'
+// When enablePrivateNetworking = true, dbLocation must equal location —
+// PostgreSQL VNet injection requires the server and VNet to be in the same region.
+param dbLocation string = 'eastus'
 param staticSiteLocation string = 'eastus2'
 
 // Resource names
@@ -13,6 +15,10 @@ param appServicePlanName string
 param apiAppName string
 param workerAppName string
 param staticWebAppName string
+
+// Private networking — set true for production (requires P1v3+ App Service Plan)
+param enablePrivateNetworking bool = false
+param vnetName string = ''
 
 // Environment-specific values
 param appServicePlanSku string
@@ -40,6 +46,19 @@ param adminSecret string
 // Resource group
 var rg = resourceGroup()
 
+// Network: VNet, subnets, private DNS zone — production only.
+// When enabled, PostgreSQL is deployed with no public endpoint and App Services
+// connect to it through VNet Integration.
+module network './modules/network.bicep' = if (enablePrivateNetworking) {
+  name: 'network'
+  scope: rg
+  params: {
+    location: dbLocation
+    vnetName: vnetName
+    dbServerName: dbServerName
+  }
+}
+
 // Infrastructure: Key Vault, Storage, Service Bus, PostgreSQL
 module infrastructure './modules/infrastructure.bicep' = {
   name: 'infrastructure'
@@ -57,6 +76,9 @@ module infrastructure './modules/infrastructure.bicep' = {
     dbAdminPassword: dbAdminPassword
     jwtSecret: jwtSecret
     adminSecret: adminSecret
+    enablePrivateNetworking: enablePrivateNetworking
+    postgresSubnetId: enablePrivateNetworking ? network!.outputs.postgresSubnetId : ''
+    privateDnsZoneId: enablePrivateNetworking ? network!.outputs.privateDnsZoneId : ''
   }
 }
 
@@ -81,6 +103,8 @@ module compute './modules/compute.bicep' = {
     pcsLegalEmail: pcsLegalEmail
     pcsLegalName: pcsLegalName
     docusignBasePath: docusignBasePath
+    enablePrivateNetworking: enablePrivateNetworking
+    appServiceSubnetId: enablePrivateNetworking ? network!.outputs.appServiceSubnetId : ''
   }
 }
 

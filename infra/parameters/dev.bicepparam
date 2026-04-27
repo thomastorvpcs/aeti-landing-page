@@ -19,6 +19,9 @@ param dbSkuName = 'Standard_B1ms'
 param dbSkuTier = 'Burstable'
 param geoRedundantBackup = false
 
+// Private networking off for dev — B2 plan does not support VNet Integration
+param enablePrivateNetworking = false
+
 // Integrations
 param docusignBasePath = 'https://demo.docusign.net/restapi'
 
