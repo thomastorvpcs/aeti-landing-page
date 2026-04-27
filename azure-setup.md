@@ -31,18 +31,21 @@ This document describes all Azure resources required to run the ABTI Reseller On
 | Resource | Production name | Staging name |
 |---|---|---|
 | Resource group | `RG-PCS-ABTI-PROD` | `RG-PCS-ABTI-STAGING` |
+| **Virtual Network** | **`abti-vnet-prod`** | *(not required — see note)* |
 | Static Web App | `abti-frontend-prod` | `abti-frontend-staging` |
 | App Service Plan | `abti-plan-prod` | `abti-plan-staging` |
 | API App Service | `abti-api-prod` | `abti-api-staging` |
 | Worker App Service | `abti-worker-prod` | `abti-worker-staging` |
-| PostgreSQL Server | `abti-db-prod` | shared server, separate DB |
+| PostgreSQL Server | `abti-db-prod` | `abti-db-staging` |
 | PostgreSQL Database | `abti_onboarding` | `abti_onboarding_staging` |
 | Storage Account | `abtistorageprod` | `abtistoragestaging` |
 | Blob Container | `reseller-docs` | `reseller-docs` |
 | Service Bus Namespace | `abti-bus-prod` | `abti-bus-staging` |
 | Service Bus Queue | `aeti-onboarding` | `aeti-onboarding` |
 
-> **Note:** Resource names containing `.azurewebsites.net` or `.azurestaticapps.net` must be globally unique across all Azure customers. Adjust names if any are already taken — the dev team will update the application configuration to match whatever names are chosen.
+> **Note on VNet:** Production uses a private Virtual Network so the database has no public internet exposure. Staging uses public access with IP firewall rules — staging does not hold real customer data and the B2 App Service Plan does not support VNet Integration.
+
+> **Note on resource names:** Names ending in `.azurewebsites.net` or `.azurestaticapps.net` must be globally unique across all Azure customers. Adjust names if any are already taken — the dev team will update the application configuration to match whatever names are chosen.
 
 ---
 
@@ -58,6 +61,34 @@ Two resource groups, one per environment.
 | PURPOSE | `ABTI Reseller Onboarding Portal` |
 | ENV | `PROD` / `STAGING` |
 | Region | East US (or preferred region — use the same region for all resources) |
+
+---
+
+### Virtual Network — Production Only
+
+The production database must not be reachable from the public internet. A Virtual Network with two subnets isolates it completely — the App Services connect through VNet Integration and the database has no public endpoint.
+
+| Setting | Value |
+|---|---|
+| VNet name | `abti-vnet-prod` |
+| Resource group | `RG-PCS-ABTI-PROD` |
+| Address space | `10.0.0.0/16` |
+
+**Subnets:**
+
+| Subnet name | Address range | Purpose |
+|---|---|---|
+| `subnet-appservice` | `10.0.1.0/24` | App Service Regional VNet Integration (outbound traffic from API + worker) |
+| `subnet-postgres` | `10.0.2.0/24` | PostgreSQL Flexible Server VNet injection (delegated to `Microsoft.DBforPostgreSQL/flexibleServers`) |
+
+**Private DNS Zone:**
+
+| Setting | Value |
+|---|---|
+| Zone name | `abti-db-prod.private.postgres.database.azure.com` |
+| Linked VNet | `abti-vnet-prod` |
+
+This DNS zone allows the App Services (inside the VNet) to resolve the PostgreSQL hostname to its private IP rather than a public address.
 
 ---
 
@@ -102,8 +133,6 @@ After creating the queue, create a **Shared Access Policy** on the queue (not th
 
 ### Azure Database for PostgreSQL — Flexible Server
 
-**One server, two databases** (one per environment). This is the most cost-effective approach for staging.
-
 | Setting | Production | Staging |
 |---|---|---|
 | Server name | `abti-db-prod` | `abti-db-staging` |
@@ -113,9 +142,9 @@ After creating the queue, create a **Shared Access Policy** on the queue (not th
 | Admin password | Generate strong password — store in Key Vault | Generate separate password |
 | Storage | 32 GB, auto-grow enabled | 32 GB |
 | Backup retention | **35 days** | 7 days |
-| Geo-redundant backup | Yes | No |
+| Geo-redundant backup | **Yes** | No |
 | SSL enforcement | **Enabled** | Enabled |
-| Public network access | Restricted (see Firewall section below) | Restricted |
+| **Connectivity** | **Private — VNet integration (no public endpoint)** | Public — IP firewall rules |
 
 **Databases to create on each server:**
 
@@ -124,22 +153,27 @@ After creating the queue, create a **Shared Access Policy** on the queue (not th
 | `abti-db-prod` | `abti_onboarding` |
 | `abti-db-staging` | `abti_onboarding_staging` |
 
-The dev team will run database migrations after provisioning. They need to connect temporarily from a dev machine — see the Firewall section below.
+> **Production connectivity:** The production server is deployed directly into `subnet-postgres` using Flexible Server VNet injection. It has no public endpoint — it is not reachable from the internet under any circumstances. The App Services connect to it via VNet Integration through `subnet-appservice`. No IP firewall rules are needed or used.
+
+> **Staging connectivity:** The staging server uses public access with IP firewall rules — see the Network Security section below.
+
+The dev team will run database migrations after provisioning. For production, this requires temporary access via the Azure Bastion or a temporary firewall exception — see the Network Security section.
 
 ---
 
 ### App Service Plan
 
-One plan per environment. Both App Services (API + worker) in the same environment share a plan.
+One plan per environment. Both App Services (API + worker) share a plan within the same environment.
 
 | Setting | Production | Staging |
 |---|---|---|
 | Plan name | `abti-plan-prod` | `abti-plan-staging` |
 | OS | **Linux** | Linux |
-| SKU | **P1v3** (Premium v3, 1 vCore) | B2 (Basic, 2 vCores) |
+| SKU | **P1v3** (Premium v3) | B2 (Basic) |
 | Region | Same as resource group | Same |
+| VNet Integration support | **Yes — required** | No (B2 does not support it) |
 
-> P1v3 is recommended for production over B-series — it supports deployment slots if needed in the future, has no cold-start delays (Always On is available), and provides better baseline performance.
+> P1v3 is required for production — it is the minimum tier that supports Regional VNet Integration, which is needed to connect to the private database.
 
 ---
 
@@ -156,8 +190,9 @@ Hosts the Node.js/Express API that handles form submissions, file uploads, Acrob
 | Minimum TLS version | **1.2** |
 | FTP state | **Disabled** |
 | SCM (Kudu) HTTPS only | Yes |
+| **VNet Integration (prod only)** | **Subnet: `subnet-appservice` in `abti-vnet-prod`** |
 
-No startup command needed — the app reads `package.json` `start` script automatically.
+No startup command needed — the app reads the `package.json` `start` script automatically.
 
 ---
 
@@ -174,6 +209,7 @@ Hosts the background worker that polls the Service Bus queue. It runs as a long-
 | HTTPS Only | Yes |
 | Minimum TLS version | 1.2 |
 | FTP state | Disabled |
+| **VNet Integration (prod only)** | **Subnet: `subnet-appservice` in `abti-vnet-prod`** |
 
 ---
 
@@ -195,22 +231,65 @@ Hosts the React frontend (both the public-facing onboarding form and the interna
 
 ---
 
-## Firewall Configuration
+## Network Security
 
-### PostgreSQL — Firewall Rules
+### Production — Fully Private Database
 
-| Rule name | IP / Range | Purpose |
+The production PostgreSQL server has **no public endpoint**. Network access works as follows:
+
+```
+Internet → App Service (public HTTPS) → VNet Integration → subnet-appservice
+                                                              ↓
+                                                        subnet-postgres
+                                                              ↓
+                                                    abti-db-prod (private IP only)
+```
+
+No IP firewall rules are created on the production database. The server is not reachable from outside the VNet under any circumstances.
+
+**Running database migrations (one-time, after provisioning):**
+
+The dev team needs temporary access to run the initial database migrations. Two options — choose one:
+
+**Option A — Temporary firewall exception (simpler):**
+1. Temporarily enable public access on the PostgreSQL server
+2. Add the dev team's IP as a firewall rule
+3. Run migrations
+4. Disable public access again
+
+Via CLI:
+```bash
+# Enable temporarily
+az postgres flexible-server update \
+  --name "abti-db-prod" --resource-group "RG-PCS-ABTI-PROD" \
+  --public-access Enabled
+
+az postgres flexible-server firewall-rule create \
+  --name "TempDevAccess" --server-name "abti-db-prod" \
+  --resource-group "RG-PCS-ABTI-PROD" \
+  --start-ip-address <dev-ip> --end-ip-address <dev-ip>
+
+# Dev team runs migrations, then:
+az postgres flexible-server update \
+  --name "abti-db-prod" --resource-group "RG-PCS-ABTI-PROD" \
+  --public-access Disabled
+```
+
+**Option B — Azure Bastion (more secure, more setup):**
+Set up an Azure Bastion host and a small VM inside the VNet. The dev team connects via Bastion, runs migrations from the VM, then the VM can be deleted.
+
+---
+
+### Staging — Public Access with IP Firewall
+
+The staging database uses public access restricted to known IP addresses.
+
+| Firewall rule | IP | Purpose |
 |---|---|---|
-| `AllowAzureServices` | Azure IPs (built-in toggle) | Allows App Services to connect |
-| `DevAccess-Thomas` | Thomas's office IP | Allows running database migrations from dev machine |
+| `AllowAzureServices` | 0.0.0.0 (built-in toggle) | Allows staging App Services to connect |
+| `DevAccess-Thomas` | Thomas's office/dev IP | Allows running migrations from dev machine |
 
-> Enable **"Allow access to Azure services"** in the PostgreSQL firewall settings. This covers all App Service outbound IPs without needing to list them individually.
-
-After the initial migration is complete and the firewall rule for the dev machine is no longer needed, it can be removed.
-
-### App Service Outbound IPs
-
-If "Allow Azure services" is not acceptable for your security policy, the App Service outbound IPs can be whitelisted individually. The dev team can provide these after the App Services are created (Portal → App Service → Properties → Outbound IP addresses).
+> Enable **"Allow access to Azure services"** in the PostgreSQL networking settings. This covers all App Service outbound IPs. The dev team's IP can be removed after initial migrations are complete.
 
 ---
 
@@ -324,6 +403,11 @@ RG_STAGING="RG-PCS-ABTI-STAGING"
 OWNER="Thomas Torvund"
 PURPOSE="ABTI Reseller Onboarding Portal"
 
+# Virtual Network (production only)
+VNET_PROD="abti-vnet-prod"
+SUBNET_APPSERVICE="subnet-appservice"
+SUBNET_POSTGRES="subnet-postgres"
+
 # Storage
 STORAGE_PROD="abtistorageprod"        # globally unique, lowercase, 3–24 chars
 STORAGE_STAGING="abtistoragestaging"
@@ -356,97 +440,114 @@ WORKER_STAGING="abti-worker-staging"
 echo "=== ABTI Azure Provisioning ==="
 echo ""
 
-# ── Resource Groups ─────────────────────────────────────────────────────────────
-echo "[1/12] Creating resource groups..."
+# ── [1] Resource Groups ─────────────────────────────────────────────────────────
+echo "[1/14] Creating resource groups..."
 az group create \
-  --name "$RG_PROD" \
-  --location "$LOCATION" \
+  --name "$RG_PROD" --location "$LOCATION" \
   --tags OWNER="$OWNER" PURPOSE="$PURPOSE" ENV="PROD" \
   --output none
 
 az group create \
-  --name "$RG_STAGING" \
-  --location "$LOCATION" \
+  --name "$RG_STAGING" --location "$LOCATION" \
   --tags OWNER="$OWNER" PURPOSE="$PURPOSE" ENV="STAGING" \
   --output none
 
-# ── Storage Accounts ────────────────────────────────────────────────────────────
-echo "[2/12] Creating storage accounts..."
-for STORAGE_NAME in "$STORAGE_PROD" "$STORAGE_STAGING"; do
-  if [ "$STORAGE_NAME" = "$STORAGE_PROD" ]; then RG="$RG_PROD"; SKU="Standard_ZRS"; else RG="$RG_STAGING"; SKU="Standard_LRS"; fi
-  az storage account create \
-    --name "$STORAGE_NAME" \
-    --resource-group "$RG" \
-    --location "$LOCATION" \
-    --sku "$SKU" \
-    --kind StorageV2 \
-    --https-only true \
-    --allow-blob-public-access false \
-    --min-tls-version TLS1_2 \
-    --output none
-done
+# ── [2] Virtual Network — Production Only ───────────────────────────────────────
+echo "[2/14] Creating production VNet and subnets..."
+az network vnet create \
+  --name "$VNET_PROD" \
+  --resource-group "$RG_PROD" \
+  --location "$LOCATION" \
+  --address-prefix "10.0.0.0/16" \
+  --output none
 
-# ── Blob Containers ─────────────────────────────────────────────────────────────
-echo "[3/12] Creating blob containers..."
-for STORAGE_NAME in "$STORAGE_PROD" "$STORAGE_STAGING"; do
-  if [ "$STORAGE_NAME" = "$STORAGE_PROD" ]; then RG="$RG_PROD"; else RG="$RG_STAGING"; fi
+# Subnet for App Service Regional VNet Integration (outbound from API + worker)
+az network vnet subnet create \
+  --name "$SUBNET_APPSERVICE" \
+  --vnet-name "$VNET_PROD" \
+  --resource-group "$RG_PROD" \
+  --address-prefix "10.0.1.0/24" \
+  --output none
+
+# Subnet for PostgreSQL — must be delegated to flexibleServers
+az network vnet subnet create \
+  --name "$SUBNET_POSTGRES" \
+  --vnet-name "$VNET_PROD" \
+  --resource-group "$RG_PROD" \
+  --address-prefix "10.0.2.0/24" \
+  --delegations "Microsoft.DBforPostgreSQL/flexibleServers" \
+  --output none
+
+# ── [3] Private DNS Zone for Production PostgreSQL ──────────────────────────────
+echo "[3/14] Creating private DNS zone for production database..."
+DNS_ZONE="${DB_PROD}.private.postgres.database.azure.com"
+
+az network private-dns zone create \
+  --resource-group "$RG_PROD" \
+  --name "$DNS_ZONE" \
+  --output none
+
+az network private-dns link vnet create \
+  --resource-group "$RG_PROD" \
+  --zone-name "$DNS_ZONE" \
+  --name "dns-link-${VNET_PROD}" \
+  --virtual-network "$VNET_PROD" \
+  --registration-enabled false \
+  --output none
+
+# ── [4] Storage Accounts ────────────────────────────────────────────────────────
+echo "[4/14] Creating storage accounts..."
+az storage account create \
+  --name "$STORAGE_PROD" --resource-group "$RG_PROD" --location "$LOCATION" \
+  --sku Standard_ZRS --kind StorageV2 \
+  --https-only true --allow-blob-public-access false --min-tls-version TLS1_2 \
+  --output none
+
+az storage account create \
+  --name "$STORAGE_STAGING" --resource-group "$RG_STAGING" --location "$LOCATION" \
+  --sku Standard_LRS --kind StorageV2 \
+  --https-only true --allow-blob-public-access false --min-tls-version TLS1_2 \
+  --output none
+
+# ── [5] Blob Containers ─────────────────────────────────────────────────────────
+echo "[5/14] Creating blob containers..."
+for PAIR in "${STORAGE_PROD}:${RG_PROD}" "${STORAGE_STAGING}:${RG_STAGING}"; do
+  STORAGE_NAME="${PAIR%%:*}"
+  RG="${PAIR##*:}"
   STORAGE_KEY=$(az storage account keys list \
-    --account-name "$STORAGE_NAME" \
-    --resource-group "$RG" \
+    --account-name "$STORAGE_NAME" --resource-group "$RG" \
     --query "[0].value" --output tsv)
   az storage container create \
-    --name "$BLOB_CONTAINER" \
-    --account-name "$STORAGE_NAME" \
-    --account-key "$STORAGE_KEY" \
-    --public-access off \
-    --output none
+    --name "$BLOB_CONTAINER" --account-name "$STORAGE_NAME" \
+    --account-key "$STORAGE_KEY" --public-access off --output none
 done
 
-# Enable soft delete on production storage (35 days)
 az storage blob service-properties delete-policy update \
-  --account-name "$STORAGE_PROD" \
-  --enable true \
-  --days-retained 35 \
-  --output none
+  --account-name "$STORAGE_PROD" --enable true --days-retained 35 --output none
 
-# Enable soft delete on staging storage (7 days)
 az storage blob service-properties delete-policy update \
-  --account-name "$STORAGE_STAGING" \
-  --enable true \
-  --days-retained 7 \
-  --output none
+  --account-name "$STORAGE_STAGING" --enable true --days-retained 7 --output none
 
-# ── Service Bus ─────────────────────────────────────────────────────────────────
-echo "[4/12] Creating Service Bus namespaces and queues..."
-for ENV in prod staging; do
-  if [ "$ENV" = "prod" ]; then BUS="$BUS_PROD"; RG="$RG_PROD"; else BUS="$BUS_STAGING"; RG="$RG_STAGING"; fi
+# ── [6] Service Bus ─────────────────────────────────────────────────────────────
+echo "[6/14] Creating Service Bus namespaces and queues..."
+for PAIR in "${BUS_PROD}:${RG_PROD}" "${BUS_STAGING}:${RG_STAGING}"; do
+  BUS="${PAIR%%:*}"
+  RG="${PAIR##*:}"
   az servicebus namespace create \
-    --name "$BUS" \
-    --resource-group "$RG" \
-    --location "$LOCATION" \
-    --sku Standard \
-    --output none
-
+    --name "$BUS" --resource-group "$RG" --location "$LOCATION" \
+    --sku Standard --output none
   az servicebus queue create \
-    --name "$BUS_QUEUE" \
-    --namespace-name "$BUS" \
-    --resource-group "$RG" \
-    --lock-duration PT1M \
-    --max-delivery-count 5 \
-    --enable-dead-lettering-on-message-expiration true \
-    --output none
-
+    --name "$BUS_QUEUE" --namespace-name "$BUS" --resource-group "$RG" \
+    --lock-duration PT1M --max-delivery-count 5 \
+    --enable-dead-lettering-on-message-expiration true --output none
   az servicebus queue authorization-rule create \
-    --name "$BUS_POLICY" \
-    --queue-name "$BUS_QUEUE" \
-    --namespace-name "$BUS" \
-    --resource-group "$RG" \
-    --rights Send Listen \
-    --output none
+    --name "$BUS_POLICY" --queue-name "$BUS_QUEUE" \
+    --namespace-name "$BUS" --resource-group "$RG" \
+    --rights Send Listen --output none
 done
 
-# ── PostgreSQL ──────────────────────────────────────────────────────────────────
-echo "[5/12] Creating PostgreSQL servers (this takes several minutes)..."
+# ── [7] PostgreSQL — Production (private, VNet-injected) ────────────────────────
+echo "[7/14] Creating production PostgreSQL server (takes several minutes)..."
 az postgres flexible-server create \
   --name "$DB_PROD" \
   --resource-group "$RG_PROD" \
@@ -459,9 +560,19 @@ az postgres flexible-server create \
   --storage-size 32 \
   --backup-retention 35 \
   --geo-redundant-backup Enabled \
-  --public-access None \
+  --vnet "$VNET_PROD" \
+  --subnet "$SUBNET_POSTGRES" \
+  --private-dns-zone "$DNS_ZONE" \
   --output none
+# Note: --vnet/--subnet deploys the server into the VNet with no public endpoint.
+# No firewall rules are needed or created for production.
 
+az postgres flexible-server db create \
+  --database-name "$DB_NAME_PROD" --server-name "$DB_PROD" \
+  --resource-group "$RG_PROD" --output none
+
+# ── [8] PostgreSQL — Staging (public access, IP firewall) ───────────────────────
+echo "[8/14] Creating staging PostgreSQL server (takes several minutes)..."
 az postgres flexible-server create \
   --name "$DB_STAGING" \
   --resource-group "$RG_STAGING" \
@@ -474,109 +585,69 @@ az postgres flexible-server create \
   --storage-size 32 \
   --backup-retention 7 \
   --geo-redundant-backup Disabled \
-  --public-access None \
-  --output none
-
-echo "[6/12] Creating databases..."
-az postgres flexible-server db create \
-  --database-name "$DB_NAME_PROD" \
-  --server-name "$DB_PROD" \
-  --resource-group "$RG_PROD" \
+  --public-access Enabled \
   --output none
 
 az postgres flexible-server db create \
-  --database-name "$DB_NAME_STAGING" \
-  --server-name "$DB_STAGING" \
-  --resource-group "$RG_STAGING" \
-  --output none
+  --database-name "$DB_NAME_STAGING" --server-name "$DB_STAGING" \
+  --resource-group "$RG_STAGING" --output none
 
-# Enable Azure services access on both DB servers
-echo "[7/12] Configuring database firewall..."
+# Allow Azure services (covers staging App Service outbound IPs)
 az postgres flexible-server firewall-rule create \
-  --name "AllowAzureServices" \
-  --server-name "$DB_PROD" \
-  --resource-group "$RG_PROD" \
-  --start-ip-address 0.0.0.0 \
-  --end-ip-address 0.0.0.0 \
-  --output none
-
-az postgres flexible-server firewall-rule create \
-  --name "AllowAzureServices" \
-  --server-name "$DB_STAGING" \
+  --name "AllowAzureServices" --server-name "$DB_STAGING" \
   --resource-group "$RG_STAGING" \
-  --start-ip-address 0.0.0.0 \
-  --end-ip-address 0.0.0.0 \
-  --output none
+  --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0 --output none
 
-# ── App Service Plans ────────────────────────────────────────────────────────────
-echo "[8/12] Creating App Service plans..."
+# ── [9] App Service Plans ────────────────────────────────────────────────────────
+echo "[9/14] Creating App Service plans..."
+# P1v3 required for production — supports Regional VNet Integration
 az appservice plan create \
-  --name "$PLAN_PROD" \
-  --resource-group "$RG_PROD" \
-  --location "$LOCATION" \
-  --is-linux \
-  --sku P1v3 \
-  --output none
+  --name "$PLAN_PROD" --resource-group "$RG_PROD" --location "$LOCATION" \
+  --is-linux --sku P1v3 --output none
 
 az appservice plan create \
-  --name "$PLAN_STAGING" \
-  --resource-group "$RG_STAGING" \
-  --location "$LOCATION" \
-  --is-linux \
-  --sku B2 \
-  --output none
+  --name "$PLAN_STAGING" --resource-group "$RG_STAGING" --location "$LOCATION" \
+  --is-linux --sku B2 --output none
 
-# ── API App Services ─────────────────────────────────────────────────────────────
-echo "[9/12] Creating API App Services..."
-for APP in "$API_PROD" "$API_STAGING"; do
-  if [ "$APP" = "$API_PROD" ]; then RG="$RG_PROD"; PLAN="$PLAN_PROD"; else RG="$RG_STAGING"; PLAN="$PLAN_STAGING"; fi
-  az webapp create \
-    --name "$APP" \
-    --resource-group "$RG" \
-    --plan "$PLAN" \
-    --runtime "NODE:20-lts" \
-    --output none
-  az webapp config set \
-    --name "$APP" \
-    --resource-group "$RG" \
-    --always-on true \
-    --min-tls-version "1.2" \
-    --ftps-state Disabled \
-    --output none
-  az webapp update \
-    --name "$APP" \
-    --resource-group "$RG" \
-    --https-only true \
-    --output none
+# ── [10] API App Services ────────────────────────────────────────────────────────
+echo "[10/14] Creating API App Services..."
+for PAIR in "${API_PROD}:${RG_PROD}:${PLAN_PROD}" "${API_STAGING}:${RG_STAGING}:${PLAN_STAGING}"; do
+  APP="${PAIR%%:*}"; REST="${PAIR#*:}"; RG="${REST%%:*}"; PLAN="${REST##*:}"
+  az webapp create --name "$APP" --resource-group "$RG" --plan "$PLAN" \
+    --runtime "NODE:20-lts" --output none
+  az webapp config set --name "$APP" --resource-group "$RG" \
+    --always-on true --min-tls-version "1.2" --ftps-state Disabled --output none
+  az webapp update --name "$APP" --resource-group "$RG" \
+    --https-only true --output none
 done
 
-# ── Worker App Services ──────────────────────────────────────────────────────────
-echo "[10/12] Creating worker App Services..."
-for APP in "$WORKER_PROD" "$WORKER_STAGING"; do
-  if [ "$APP" = "$WORKER_PROD" ]; then RG="$RG_PROD"; PLAN="$PLAN_PROD"; else RG="$RG_STAGING"; PLAN="$PLAN_STAGING"; fi
-  az webapp create \
-    --name "$APP" \
-    --resource-group "$RG" \
-    --plan "$PLAN" \
-    --runtime "NODE:20-lts" \
-    --output none
-  az webapp config set \
-    --name "$APP" \
-    --resource-group "$RG" \
-    --always-on true \
-    --startup-file "node src/workers/onboarding-worker.js" \
-    --min-tls-version "1.2" \
-    --ftps-state Disabled \
-    --output none
-  az webapp update \
-    --name "$APP" \
-    --resource-group "$RG" \
-    --https-only true \
-    --output none
+# ── [11] Worker App Services ─────────────────────────────────────────────────────
+echo "[11/14] Creating worker App Services..."
+for PAIR in "${WORKER_PROD}:${RG_PROD}:${PLAN_PROD}" "${WORKER_STAGING}:${RG_STAGING}:${PLAN_STAGING}"; do
+  APP="${PAIR%%:*}"; REST="${PAIR#*:}"; RG="${REST%%:*}"; PLAN="${REST##*:}"
+  az webapp create --name "$APP" --resource-group "$RG" --plan "$PLAN" \
+    --runtime "NODE:20-lts" --output none
+  az webapp config set --name "$APP" --resource-group "$RG" \
+    --always-on true --startup-file "node src/workers/onboarding-worker.js" \
+    --min-tls-version "1.2" --ftps-state Disabled --output none
+  az webapp update --name "$APP" --resource-group "$RG" \
+    --https-only true --output none
 done
 
-# ── Output ───────────────────────────────────────────────────────────────────────
-echo "[11/12] Collecting connection strings..."
+# ── [12] VNet Integration — Production App Services Only ─────────────────────────
+echo "[12/14] Attaching production App Services to VNet..."
+# This routes all outbound traffic from the App Services through the VNet,
+# allowing them to reach the private PostgreSQL server.
+az webapp vnet-integration add \
+  --name "$API_PROD" --resource-group "$RG_PROD" \
+  --vnet "$VNET_PROD" --subnet "$SUBNET_APPSERVICE" --output none
+
+az webapp vnet-integration add \
+  --name "$WORKER_PROD" --resource-group "$RG_PROD" \
+  --vnet "$VNET_PROD" --subnet "$SUBNET_APPSERVICE" --output none
+
+# ── [13] Output ───────────────────────────────────────────────────────────────────
+echo "[13/14] Collecting connection strings..."
 echo ""
 echo "================================================================"
 echo "  PROVISIONING COMPLETE — share the following with the dev team"
@@ -634,10 +705,11 @@ echo "================================================================"
 echo "  MANUAL STEPS REMAINING (cannot be scripted)"
 echo "================================================================"
 echo ""
-echo "1. Create Static Web Apps (see section below)"
-echo "2. Add dev team's firewall IP to both PostgreSQL servers"
-echo "3. Download publish profiles and share as GitHub secrets"
-echo "4. Share Static Web App deployment tokens as GitHub secrets"
+echo "1. Create Static Web Apps via Portal (see section below)"
+echo "2. Add dev team's IP to staging PostgreSQL firewall"
+echo "3. Grant dev team temporary access to production DB for migrations"
+echo "4. Download publish profiles and share as GitHub secrets"
+echo "5. Share Static Web App deployment tokens as GitHub secrets"
 echo ""
 ```
 
@@ -663,33 +735,6 @@ Static Web Apps require a GitHub connection that is easier to set up through the
    - Output location: `dist`
 3. Complete creation. Azure will add a GitHub Actions workflow file to the repository automatically.
 4. After creation: **Manage deployment token** → copy the token → provide to dev team (stored as a GitHub Actions secret).
-
----
-
-## Firewall — Dev Machine Access (Temporary)
-
-The dev team needs to connect to the PostgreSQL servers from their local machine to run database migrations. Add a temporary firewall rule on both servers:
-
-**Portal → PostgreSQL server → Networking → Add current client IP address**
-
-Or via CLI (replace IP with the dev team's public IP):
-```bash
-az postgres flexible-server firewall-rule create \
-  --name "DevAccess-ThomasTorvund" \
-  --server-name "abti-db-prod" \
-  --resource-group "RG-PCS-ABTI-PROD" \
-  --start-ip-address <dev-machine-ip> \
-  --end-ip-address <dev-machine-ip>
-
-az postgres flexible-server firewall-rule create \
-  --name "DevAccess-ThomasTorvund" \
-  --server-name "abti-db-staging" \
-  --resource-group "RG-PCS-ABTI-STAGING" \
-  --start-ip-address <dev-machine-ip> \
-  --end-ip-address <dev-machine-ip>
-```
-
-This rule can be removed after the initial migrations are run.
 
 ---
 
@@ -733,6 +778,13 @@ Download publish profiles: Portal → App Service → **Deployment Center** → 
 - [ ] `RG-PCS-ABTI-PROD` created with correct tags
 - [ ] `RG-PCS-ABTI-STAGING` created with correct tags
 
+### Virtual Network (Production)
+- [ ] `abti-vnet-prod` created with address space `10.0.0.0/16`
+- [ ] `subnet-appservice` (10.0.1.0/24) created — no delegation
+- [ ] `subnet-postgres` (10.0.2.0/24) created — delegated to `Microsoft.DBforPostgreSQL/flexibleServers`
+- [ ] Private DNS zone `abti-db-prod.private.postgres.database.azure.com` created
+- [ ] DNS zone linked to `abti-vnet-prod`
+
 ### Storage
 - [ ] `abtistorageprod` — public blob access disabled, TLS 1.2, ZRS, soft delete 35 days
 - [ ] `abtistoragestaging` — public blob access disabled, TLS 1.2, LRS, soft delete 7 days
@@ -745,19 +797,19 @@ Download publish profiles: Portal → App Service → **Deployment Center** → 
 - [ ] Queue-scoped policy `app-send-listen` created with Send + Listen only (not Manage)
 
 ### PostgreSQL
-- [ ] `abti-db-prod` — GeneralPurpose D2s_v3, backup 35 days, geo-redundant, SSL enforced
-- [ ] `abti-db-staging` — Burstable B1ms, backup 7 days, SSL enforced
+- [ ] `abti-db-prod` — GeneralPurpose D2s_v3, backup 35 days, geo-redundant, SSL enforced, **no public endpoint**, deployed into `subnet-postgres`
+- [ ] `abti-db-staging` — Burstable B1ms, backup 7 days, SSL enforced, public access with firewall
 - [ ] Database `abti_onboarding` created on prod server
 - [ ] Database `abti_onboarding_staging` created on staging server
-- [ ] "Allow Azure services" firewall rule enabled on both servers
-- [ ] Dev machine IP firewall rule added on both servers (temporary)
+- [ ] Staging: `AllowAzureServices` firewall rule enabled
 
 ### App Services
 - [ ] `abti-plan-prod` (Linux, P1v3) and `abti-plan-staging` (Linux, B2) created
-- [ ] `abti-api-prod` — Node 20, Always On, HTTPS Only, TLS 1.2, FTP disabled
-- [ ] `abti-worker-prod` — Node 20, Always On, startup command set, HTTPS Only, FTP disabled
-- [ ] `abti-api-staging` — same as prod
-- [ ] `abti-worker-staging` — same as prod
+- [ ] `abti-api-prod` — Node 20, Always On, HTTPS Only, TLS 1.2, FTP disabled, **VNet Integration to `subnet-appservice`**
+- [ ] `abti-worker-prod` — Node 20, Always On, startup command set, HTTPS Only, FTP disabled, **VNet Integration to `subnet-appservice`**
+- [ ] `abti-api-staging` — Node 20, Always On, HTTPS Only, TLS 1.2, FTP disabled
+- [ ] `abti-worker-staging` — Node 20, Always On, startup command set, HTTPS Only, FTP disabled
+- [ ] Verify production App Services can reach `abti-db-prod` through the VNet (dev team confirms after deploying)
 
 ### Static Web Apps
 - [ ] `abti-frontend-prod` linked to `master` branch
@@ -767,3 +819,5 @@ Download publish profiles: Portal → App Service → **Deployment Center** → 
 ### Handoff
 - [ ] All connection strings collected and shared securely with dev team
 - [ ] All 6 GitHub Actions secrets (4 publish profiles + 2 SWA tokens) shared with dev team
+- [ ] Temporary production DB access arranged with dev team for running initial migrations
+- [ ] Dev team's IP added to staging PostgreSQL firewall
