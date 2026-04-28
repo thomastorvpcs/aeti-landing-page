@@ -1,7 +1,7 @@
 using '../main.bicep'
 
 // Resource names
-param keyVaultName = 'abti-kv-prod'
+param keyVaultName = 'abti-kv-prod2'
 param storageAccountName = 'abtiresellerdataprod'
 param serviceBusNamespaceName = 'abti-onboarding-pcs-prod'
 param dbServerName = 'abti-db-prod'
