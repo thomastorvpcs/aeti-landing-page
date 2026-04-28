@@ -18,9 +18,6 @@ param staticWebAppSku = 'Standard'
 param dbSkuName = 'Standard_D2s_v3'
 param dbSkuTier = 'GeneralPurpose'
 param geoRedundantBackup = true
-// dbLocation must match location when enablePrivateNetworking = true
-param dbLocation = 'eastus'
-
 // Private networking — fully private DB with no public endpoint
 param enablePrivateNetworking = true
 param vnetName = 'abti-vnet-prod'

@@ -1,9 +1,6 @@
 targetScope = 'resourceGroup'
 
-param location string = 'eastus'
-// When enablePrivateNetworking = true, dbLocation must equal location —
-// PostgreSQL VNet injection requires the server and VNet to be in the same region.
-param dbLocation string = 'eastus'
+param location string = 'eastus2'
 param staticSiteLocation string = 'eastus2'
 
 // Resource names
@@ -53,7 +50,7 @@ module network './modules/network.bicep' = if (enablePrivateNetworking) {
   name: 'network'
   scope: rg
   params: {
-    location: dbLocation
+    location: location
     vnetName: vnetName
     dbServerName: dbServerName
   }
@@ -65,7 +62,7 @@ module infrastructure './modules/infrastructure.bicep' = {
   scope: rg
   params: {
     location: location
-    dbLocation: dbLocation
+
     keyVaultName: keyVaultName
     storageAccountName: storageAccountName
     serviceBusNamespaceName: serviceBusNamespaceName

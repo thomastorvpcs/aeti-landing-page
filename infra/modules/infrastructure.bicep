@@ -1,5 +1,4 @@
 param location string
-param dbLocation string
 param keyVaultName string
 param storageAccountName string
 param serviceBusNamespaceName string
@@ -103,7 +102,7 @@ resource serviceBusQueueAuthRule 'Microsoft.ServiceBus/namespaces/queues/authori
 // PostgreSQL Flexible Server
 resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2026-01-01-preview' = {
   name: dbServerName
-  location: dbLocation
+  location: location
   sku: {
     name: dbSkuName
     tier: dbSkuTier
