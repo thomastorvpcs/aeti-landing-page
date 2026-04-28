@@ -7,12 +7,6 @@ param dbSkuName string
 param dbSkuTier string
 param geoRedundantBackup bool
 
-// When true, PostgreSQL is deployed into the VNet with no public endpoint.
-// postgresSubnetId and privateDnsZoneId are required in that case.
-param enablePrivateNetworking bool = false
-param postgresSubnetId string = ''
-param privateDnsZoneId string = ''
-
 @secure()
 param dbAdminPassword string
 
@@ -119,11 +113,7 @@ resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2026-01-01-pr
       backupRetentionDays: 7
       geoRedundantBackup: geoRedundantBackup ? 'Enabled' : 'Disabled'
     }
-    network: enablePrivateNetworking ? {
-      delegatedSubnetResourceId: postgresSubnetId
-      privateDnsZoneArmResourceId: privateDnsZoneId
-      publicNetworkAccess: 'Disabled'
-    } : {
+    network: {
       publicNetworkAccess: 'Enabled'
     }
     highAvailability: {
@@ -136,9 +126,7 @@ resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2026-01-01-pr
   }
 }
 
-// Only created when private networking is off (dev/staging).
-// Production uses VNet injection — the server has no public endpoint at all.
-resource postgresAzureServicesFirewallRule 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2026-01-01-preview' = if (!enablePrivateNetworking) {
+resource postgresAzureServicesFirewallRule 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2026-01-01-preview' = {
   parent: postgresServer
   name: 'AllowAllAzureServicesAndResourcesWithinAzureIps'
   properties: {

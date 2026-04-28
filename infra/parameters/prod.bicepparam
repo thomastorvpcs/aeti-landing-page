@@ -18,10 +18,6 @@ param staticWebAppSku = 'Standard'
 param dbSkuName = 'Standard_D2s_v3'
 param dbSkuTier = 'GeneralPurpose'
 param geoRedundantBackup = true
-// Private networking — fully private DB with no public endpoint
-param enablePrivateNetworking = true
-param vnetName = 'VNET-ABTI-PROD'
-
 // Integrations
 param docusignBasePath = 'https://www.docusign.net/restapi'
 

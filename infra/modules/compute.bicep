@@ -12,11 +12,6 @@ param pcsLegalEmail string
 param pcsLegalName string
 param docusignBasePath string
 
-// When true, both App Services are connected to the VNet so they can reach
-// the private PostgreSQL server. Requires P1v3 or higher App Service Plan.
-param enablePrivateNetworking bool = false
-param appServiceSubnetId string = ''
-
 // Builds the Key Vault Reference string for a given secret name.
 // The App Service runtime resolves these at startup; the application code sees
 // the plain secret value and requires no changes.
@@ -178,26 +173,6 @@ resource workerApp 'Microsoft.Web/sites@2023-01-01' = {
         { name: 'DOCUSIGN_HMAC_SECRET', value: '@Microsoft.KeyVault(${kvRef}docusign-hmac-secret)' }
       ]
     }
-  }
-}
-
-// VNet Integration — routes all outbound traffic from the App Services through
-// the VNet so they can reach the private PostgreSQL server. Production only.
-resource apiVnetIntegration 'Microsoft.Web/sites/networkConfig@2023-01-01' = if (enablePrivateNetworking) {
-  parent: apiApp
-  name: 'virtualNetwork'
-  properties: {
-    subnetResourceId: appServiceSubnetId
-    swiftSupported: true
-  }
-}
-
-resource workerVnetIntegration 'Microsoft.Web/sites/networkConfig@2023-01-01' = if (enablePrivateNetworking) {
-  parent: workerApp
-  name: 'virtualNetwork'
-  properties: {
-    subnetResourceId: appServiceSubnetId
-    swiftSupported: true
   }
 }
 
