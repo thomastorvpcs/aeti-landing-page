@@ -1,6 +1,6 @@
 targetScope = 'resourceGroup'
 
-param location string = 'eastus2'
+param location string = 'eastus'
 param staticSiteLocation string = 'eastus2'
 
 // Resource names
