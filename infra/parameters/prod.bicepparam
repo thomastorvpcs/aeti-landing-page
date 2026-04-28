@@ -20,7 +20,7 @@ param dbSkuTier = 'GeneralPurpose'
 param geoRedundantBackup = true
 // Private networking — fully private DB with no public endpoint
 param enablePrivateNetworking = true
-param vnetName = 'abti-vnet-prod'
+param vnetName = 'VNET-ABTI-PROD'
 
 // Integrations
 param docusignBasePath = 'https://www.docusign.net/restapi'
