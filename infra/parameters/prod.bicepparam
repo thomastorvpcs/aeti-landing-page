@@ -29,6 +29,22 @@ param docusignBasePath = 'https://www.docusign.net/restapi'
 param pcsOpsEmail = 'ops@pcsww.com'
 param pcsLegalEmail = 'legal@pcsww.com'
 
-// Secrets — passed at deploy time, stored in Key Vault by this deployment.
-// Do not hardcode values here. Pass on the CLI:
-//   --parameters dbAdminPassword="..." jwtSecret="..." adminSecret="..."
+// Secrets — resolved from ops Key Vault at deploy time
+param dbAdminPassword = az.getSecret(
+  'df7b3148-9fee-4d20-82b4-25bc3da3149c',
+  'RG-PCS-ABTI-PROD',
+  'abti-ops-kv-prod',
+  'db-admin-password'
+)
+param jwtSecret = az.getSecret(
+  'df7b3148-9fee-4d20-82b4-25bc3da3149c',
+  'RG-PCS-ABTI-PROD',
+  'abti-ops-kv-prod',
+  'jwt-secret'
+)
+param adminSecret = az.getSecret(
+  'df7b3148-9fee-4d20-82b4-25bc3da3149c',
+  'RG-PCS-ABTI-PROD',
+  'abti-ops-kv-prod',
+  'admin-secret'
+)
