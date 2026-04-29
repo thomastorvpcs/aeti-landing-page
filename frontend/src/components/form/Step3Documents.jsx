@@ -2,7 +2,7 @@ import React, { useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 
 const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
-const ACCEPTED = { "application/pdf": [], "image/jpeg": [], "image/png": [] };
+const ACCEPTED = { "application/pdf": [".pdf"] };
 
 function formatBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`;
@@ -26,7 +26,7 @@ function FileUploadZone({ file, onFileChange, errorKey, errors, label, ariaLabel
   const rejectionMessage = fileRejections[0]?.errors
     .map((e) => {
       if (e.code === "file-too-large") return "File exceeds 10 MB limit.";
-      if (e.code === "file-invalid-type") return "Only PDF, JPG, or PNG accepted.";
+      if (e.code === "file-invalid-type") return "Only PDF files are accepted.";
       return e.message;
     })
     .join(" ");
@@ -83,7 +83,7 @@ function FileUploadZone({ file, onFileChange, errorKey, errors, label, ariaLabel
               <p className="text-sm font-medium text-gray-700">
                 {dropPrompt}, or <span className="text-brand-blue">browse files</span>
               </p>
-              <p className="mt-2 text-xs text-gray-400">PDF, JPG, or PNG · Max 10 MB</p>
+              <p className="mt-2 text-xs text-gray-400">PDF only · Max 10 MB</p>
             </>
           )}
         </div>

@@ -10,6 +10,7 @@ import Confirmation from "./Confirmation";
 import { saveFile, loadFile, removeFile, clearFiles } from "../../utils/fileStorage";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EIN_REGEX = /^\d{2}-?\d{7}$/;
 
 const INITIAL_FORM = {
   legalCompanyName: "",
@@ -54,7 +55,11 @@ function validateStep(step, formData, w9File, bankLetterFile) {
 
   if (step === 1) {
     if (!formData.legalCompanyName.trim()) errors.legalCompanyName = "Legal company name is required.";
-    if (!formData.ein.trim()) errors.ein = "EIN / Tax ID is required.";
+    if (!formData.ein.trim()) {
+      errors.ein = "EIN / Tax ID is required.";
+    } else if (!EIN_REGEX.test(formData.ein.trim())) {
+      errors.ein = "EIN must be in XX-XXXXXXX or XXXXXXXXX format (9 digits).";
+    }
     if (!formData.entityType) errors.entityType = "Please select an entity type.";
     if (!formData.addressStreet.trim()) errors.addressStreet = "Street address is required.";
     if (!formData.addressCity.trim()) errors.addressCity = "City is required.";
@@ -215,7 +220,7 @@ export default function OnboardingForm() {
     } catch (err) {
       const msg =
         err.response?.data?.error ||
-        "Something went wrong. Please try again or contact resellers@pcsww.com.";
+        "Something went wrong. Please try again or contact abtiquestions@pcsww.com.";
       setSubmitError(msg);
     } finally {
       setSubmitting(false);

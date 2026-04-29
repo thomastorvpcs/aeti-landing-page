@@ -1,6 +1,21 @@
 const express = require("express");
+const rateLimit = require("express-rate-limit");
 const pool = require("../db");
 const { hashPassword, verifyPassword, signToken } = require("../services/dashboardAuth");
+const requireDashboardAuth = require("../middleware/requireDashboardAuth");
+
+// 5 attempts per hour per IP — create-user is a rare admin operation
+const createUserLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many account creation attempts. Try again later." },
+});
+
+function isValidPassword(p) {
+  return p.length >= 8 && /[0-9]/.test(p) && /[^A-Za-z0-9]/.test(p);
+}
 
 const router = express.Router();
 
@@ -36,7 +51,7 @@ router.post("/login", async (req, res, next) => {
 });
 
 // POST /api/dashboard/auth/create-user  (admin-only)
-router.post("/create-user", async (req, res, next) => {
+router.post("/create-user", createUserLimiter, async (req, res, next) => {
   try {
     const adminSecret = process.env.ADMIN_SECRET;
     if (!adminSecret || req.headers["x-admin-secret"] !== adminSecret) {
@@ -50,8 +65,8 @@ router.post("/create-user", async (req, res, next) => {
     if (!email || !name || !password) {
       return res.status(422).json({ error: "email, name, and password are required." });
     }
-    if (password.length < 12) {
-      return res.status(422).json({ error: "Password must be at least 12 characters." });
+    if (!isValidPassword(password)) {
+      return res.status(422).json({ error: "Password must be at least 8 characters and include a number and a special character." });
     }
 
     const passwordHash = await hashPassword(password);
@@ -65,6 +80,27 @@ router.post("/create-user", async (req, res, next) => {
     if (err.code === "23505") {
       return res.status(422).json({ error: "A user with that email already exists." });
     }
+    next(err);
+  }
+});
+
+// POST /api/dashboard/auth/change-password  (requires JWT)
+router.post("/change-password", requireDashboardAuth, async (req, res, next) => {
+  try {
+    const newPassword = req.body.newPassword || "";
+    if (!isValidPassword(newPassword)) {
+      return res.status(422).json({ error: "Password must be at least 8 characters and include a number and a special character." });
+    }
+
+    const passwordHash = await hashPassword(newPassword);
+    await pool.query(
+      "UPDATE dashboard_users SET password_hash = $1 WHERE id = $2",
+      [passwordHash, req.dashboardUser.id]
+    );
+
+    console.log(`[dashboard] Password changed for user=${req.dashboardUser.email}`);
+    res.json({ changed: true });
+  } catch (err) {
     next(err);
   }
 });

@@ -2,6 +2,7 @@ const PDFDocument = require("pdfkit");
 const path = require("path");
 
 const LETTERHEAD_PATH = path.join(__dirname, "../assets/PCSletterhead.jpg");
+const SIGNATURE_PATH = path.join(__dirname, "../assets/signature.png");
 
 /**
  * Generate the PCS Wireless Authorized Reseller letter as a PDF buffer.
@@ -32,7 +33,7 @@ function drawPageFooter(doc) {
 
 function generateAuthorizationLetter({ legalCompanyName }) {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 60, size: "letter", bufferPages: true });
+    const doc = new PDFDocument({ margins: { top: 60, right: 60, bottom: 30, left: 60 }, size: "letter" });
     const chunks = [];
 
     doc.on("data", (chunk) => chunks.push(chunk));
@@ -41,7 +42,7 @@ function generateAuthorizationLetter({ legalCompanyName }) {
 
     // Letterhead image centered at top
     doc.image(LETTERHEAD_PATH, 60, 40, { width: 492, align: "center" });
-    doc.moveDown(3);
+    doc.y = 155; // Start content below the letterhead regardless of image height
 
     // Date
     const today = new Date();
@@ -51,34 +52,33 @@ function generateAuthorizationLetter({ legalCompanyName }) {
       day: "numeric",
     });
     doc.fontSize(11).font("Helvetica").text(`Date: ${dateStr}`);
-    doc.moveDown();
+    doc.moveDown(1);
 
     // Addressee
     doc.text(`To: ${legalCompanyName} ("Reseller")`);
-    doc.moveDown();
+    doc.moveDown(1);
 
     // Subject
     doc.text("Re: Apple Business Trade-In Program");
-    doc.moveDown();
+    doc.moveDown(1.5);
 
     // Body
     doc.text(
       `This letter serves to confirm that PCS Wireless LLC ("PCS") acknowledges and agrees that Reseller's role in the transactions under the Apple Business Trade-In Program ("TIP") between PCS and those customers who have designated Reseller as their reseller is strictly limited to receiving payment on behalf of such customers for the amounts due, if any, from PCS to such customers.`,
       { align: "justify" }
     );
-    doc.moveDown(2);
+    doc.moveDown(2.5);
 
     // Closing
     doc.text("Sincerely,");
-    doc.moveDown(2);
+    doc.moveDown(0.3);
+    doc.image(SIGNATURE_PATH, { width: 120 });
+    doc.moveDown(1);
     doc.text("Chaim T. Nash");
     doc.text("CEO");
     doc.text("PCS Wireless LLC");
 
-    // Always draw the footer on page 1, regardless of where the content cursor ended up
-    doc.switchToPage(0);
     drawPageFooter(doc);
-    doc.flushPages();
     doc.end();
   });
 }

@@ -10,10 +10,10 @@ const ENTITY_TYPES = [
 ];
 
 const US_STATES = [
-  "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA",
-  "KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ",
-  "NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT",
-  "VA","WA","WV","WI","WY","DC",
+  "AL","AK","AZ","AR","CA","CO","CT","DC","DE","FL","GA","HI","ID","IL","IN",
+  "IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH",
+  "NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT",
+  "VT","VA","WA","WV","WI","WY",
 ];
 
 export default function Step1Company({ data, onChange, errors }) {
@@ -192,13 +192,14 @@ export default function Step1Company({ data, onChange, errors }) {
       {/* Country */}
       <div>
         <label className="form-label" htmlFor="addressCountry">
-          Country <span className="text-gray-400 font-normal">(optional)</span>
+          Country
         </label>
         <input
           type="text"
-          placeholder="United States"
-          autoComplete="country-name"
-          {...field("addressCountry")}
+          value="United States"
+          readOnly
+          className="form-input bg-gray-50 text-gray-500 cursor-default"
+          id="addressCountry"
         />
       </div>
 
@@ -275,9 +276,10 @@ export default function Step1Company({ data, onChange, errors }) {
               </label>
               <input
                 type="text"
-                placeholder="United States"
-                autoComplete="billing country-name"
-                {...field("billingAddressCountry")}
+                value="United States"
+                readOnly
+                className="form-input bg-gray-50 text-gray-500 cursor-default"
+                id="billingAddressCountry"
               />
             </div>
           </div>

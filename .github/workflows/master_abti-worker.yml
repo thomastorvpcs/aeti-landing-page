@@ -22,10 +22,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
 
       - name: npm install
         working-directory: backend
-        run: npm install --production
+        run: npm ci --omit=dev
+
+      - name: npm audit
+        working-directory: backend
+        run: npm audit --production
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4

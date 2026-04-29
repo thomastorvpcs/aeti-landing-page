@@ -36,9 +36,9 @@ const AFTER_SUBMISSION = [
   {
     number: "1",
     title: "Sign the NDA",
-    duration: "Within 15 min",
+    duration: "1 business day",
     description:
-      "You'll receive a DocuSign email shortly after submitting. Review and sign the mutual NDA electronically — takes about 2 minutes.",
+      "Within 1 business day you'll receive the mutual NDA by email for electronic signature. Review and sign electronically — takes about 2 minutes.",
   },
   {
     number: "2",
@@ -53,13 +53,6 @@ const AFTER_SUBMISSION = [
     duration: "1–2 business days",
     description:
       "Our finance team reaches out to confirm banking details and sends a $1 test payment to verify the ACH / wire channel.",
-  },
-  {
-    number: "4",
-    title: "Activate & start selling",
-    duration: "Same day",
-    description:
-      "Receive your partner portal credentials, complete onboarding training, and access all reseller resources.",
   },
 ];
 
@@ -199,8 +192,8 @@ export default function ApplicationIntro({ onStart }) {
         </button>
         <p className="mt-5 text-sm text-gray-400">
           Questions before you apply?{" "}
-          <a href="mailto:resellers@pcsww.com" className="text-brand-blue hover:underline">
-            resellers@pcsww.com
+          <a href="mailto:abtiquestions@pcsww.com" className="text-brand-blue hover:underline">
+            abtiquestions@pcsww.com
           </a>
         </p>
       </div>

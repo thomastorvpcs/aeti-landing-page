@@ -6,7 +6,7 @@ const NEXT_STEPS = [
     step: 1,
     title: "Sign the NDA",
     description:
-      "You'll receive a DocuSign email within 15 minutes. Review and sign the mutual NDA electronically — it takes about 2 minutes.",
+      "Within 1 business day you'll receive the mutual NDA by email for electronic signature. Review and sign electronically — it takes about 2 minutes.",
   },
   {
     step: 2,
@@ -81,10 +81,10 @@ export default function Confirmation({ formData }) {
         <p className="text-sm text-gray-600">
           Questions? Contact your partner success team at{" "}
           <a
-            href="mailto:resellers@pcsww.com"
+            href="mailto:abtiquestions@pcsww.com"
             className="text-brand-blue font-medium hover:underline"
           >
-            resellers@pcsww.com
+            abtiquestions@pcsww.com
           </a>
         </p>
       </div>

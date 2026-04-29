@@ -2,10 +2,10 @@ const sgMail = require("@sendgrid/mail");
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-const FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL || "resellers@pcsww.com";
-const FROM_NAME = process.env.SENDGRID_FROM_NAME || "PCS Partner Program";
-const SUPPORT_EMAIL = process.env.SENDGRID_SUPPORT_EMAIL || FROM_EMAIL;
-const OPS_ALERT_EMAIL = process.env.PCS_OPS_EMAIL || "ops@pcsww.com";
+const FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL;
+const FROM_NAME = process.env.SENDGRID_FROM_NAME;
+const SUPPORT_EMAIL = process.env.SENDGRID_SUPPORT_EMAIL;
+const OPS_ALERT_EMAIL = process.env.PCS_OPS_EMAIL;
 
 const TEMPLATE_WELCOME = process.env.SENDGRID_TEMPLATE_WELCOME;
 const TEMPLATE_INTERNAL_ALERT = process.env.SENDGRID_TEMPLATE_INTERNAL_ALERT;

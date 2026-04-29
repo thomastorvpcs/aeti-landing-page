@@ -1,11 +1,34 @@
 require("dotenv").config();
 
+// ─── Required environment variables ───────────────────────────────────────────
+const REQUIRED_ENV = [
+  "DB_ENCRYPTION_KEY",
+  "AZURE_STORAGE_CONNECTION_STRING",
+  "AZURE_SERVICE_BUS_CONNECTION_STRING",
+  "SENDGRID_API_KEY",
+  "SENDGRID_FROM_EMAIL",
+  "ACROBAT_CLIENT_ID",
+  "NETSUITE_RESTLET_URL",
+];
+
+const missingEnv = REQUIRED_ENV.filter((k) => !process.env[k]);
+if (missingEnv.length > 0) {
+  console.error("[startup] Missing required environment variables:", missingEnv.join(", "));
+  process.exit(1);
+}
+if (process.env.DB_ENCRYPTION_KEY.length < 32) {
+  console.error("[startup] DB_ENCRYPTION_KEY must be at least 32 characters");
+  process.exit(1);
+}
+console.log("[startup] Environment variables OK");
+
 const http = require("http");
 const pool = require("../db");
+const { encryptionKey, selectResellerSql } = require("../db/crypto");
 const { subscribe, enqueue } = require("../services/queue");
-const { uploadFile, downloadFile } = require("../services/s3"); // downloadFile used in handleNdaCompleted
+const { uploadFile, downloadFile } = require("../services/storage");
 const { downloadSignedNda, getAgreementStatus } = require("../services/acrobat-sign");
-const { createVendor, updateVendorStatus, createTask } = require("../services/netsuite");
+const { createVendor } = require("../services/netsuite");
 const { sendWelcomeEmail, sendInternalAlert } = require("../services/sendgrid");
 const { generateAuthorizationLetter, generateVendorSetupForm } = require("../services/pdf");
 
@@ -25,13 +48,14 @@ async function withRetry(fn, label) {
     try {
       return await fn();
     } catch (err) {
-      const detail = err.response?.body || err.response?.data || err.message;
+      const status = err.response?.status;
+      const msg = err.message;
       if (attempt === MAX_RETRIES) {
-        console.error(`[worker] ${label} failed after ${MAX_RETRIES} attempts:`, JSON.stringify(detail));
+        console.error(`[worker] ${label} failed after ${MAX_RETRIES} attempts: status=${status ?? "none"} msg=${msg}`);
         throw err;
       }
       const delay = RETRY_BASE_MS * Math.pow(2, attempt - 1);
-      console.warn(`[worker] ${label} attempt ${attempt} failed. Retrying in ${delay}ms...`, JSON.stringify(detail));
+      console.warn(`[worker] ${label} attempt ${attempt} failed: status=${status ?? "none"} msg=${msg}. Retrying in ${delay}ms...`);
       await sleep(delay);
     }
   }
@@ -49,14 +73,15 @@ async function withRetry(fn, label) {
  */
 async function handleResellerSubmitted(payload) {
   const { resellerId, legalCompanyName, contactEmail, contactFirstName, contactLastName, ein,
-          ndaSignerFirstName, ndaSignerLastName, ndaSignerEmail } = payload;
+          ndaSignerFirstName, ndaSignerLastName, ndaSignerEmail, w9Key, bankLetterKey } = payload;
 
-  // Fetch full reseller record from DB
-  const { rows } = await pool.query("SELECT * FROM resellers WHERE id = $1", [resellerId]);
+  // Fetch full reseller record from DB with sensitive fields decrypted
+  const key = encryptionKey();
+  const { rows } = await pool.query(selectResellerSql("$2", "WHERE id = $1"), [resellerId, key]);
   if (!rows.length) throw new Error(`Reseller ${resellerId} not found`);
   const reseller = rows[0];
 
-  // 1. Generate and upload vendor setup form PDF to S3
+  // 1. Generate and upload vendor setup form PDF to Azure Blob Storage
   const vendorFormPdf = await withRetry(
     () => generateVendorSetupForm(reseller),
     "generateVendorSetupForm"
@@ -64,48 +89,56 @@ async function handleResellerSubmitted(payload) {
   const vendorFormKey = `resellers/${resellerId}/vendor_setup_form.pdf`;
   await withRetry(
     () => uploadFile({ key: vendorFormKey, buffer: vendorFormPdf, contentType: "application/pdf" }),
-    "S3 uploadFile(vendorSetupForm)"
+    "uploadFile(vendorSetupForm)"
   );
-  console.log(`[worker] Vendor setup form uploaded to S3: ${vendorFormKey}`);
+  console.log(`[worker] Vendor setup form uploaded: ${vendorFormKey}`);
 
-  // 2. Create NetSuite vendor via Restlet (skip if not configured)
-  let netsuiteVendorId = null;
-  if (process.env.NETSUITE_RESTLET_URL) {
-    netsuiteVendorId = await withRetry(
-      () => createVendor({
-        resellerId,
-        legalCompanyName,
-        dba: reseller.dba,
-        ein,
-        entityType: reseller.entity_type,
-        addressStreet: reseller.address_street,
-        addressCity: reseller.address_city,
-        addressState: reseller.address_state,
-        addressZip: reseller.address_zip,
-        contactFirstName,
-        contactLastName,
-        contactTitle: reseller.contact_title,
-        contactEmail,
-        contactPhone: reseller.contact_phone,
-        ndaSignerFirstName: reseller.nda_signer_first_name,
-        ndaSignerLastName: reseller.nda_signer_last_name,
-        ndaSignerTitle: reseller.nda_signer_title,
-        ndaSignerEmail: reseller.nda_signer_email,
-        ndaSignerPhone: reseller.nda_signer_phone,
-        financeContactName: reseller.finance_contact_name,
-        financeContactEmail: reseller.finance_contact_email,
-        financeContactPhone: reseller.finance_contact_phone,
-        bankName: reseller.bank_name,
-        bankAba: reseller.bank_aba,
-        bankAccountNumber: reseller.bank_account_number,
-        bankSwift: reseller.bank_swift,
-        submissionDate: reseller.created_at?.toISOString().slice(0, 10),
-      }),
-      "NetSuite createVendor"
-    );
-  } else {
-    console.warn("[worker] NETSUITE_RESTLET_URL not set — skipping NetSuite steps");
-  }
+  // Download files from blob storage and encode as base64 for direct RESTlet upload
+  const [w9Buffer, bankLetterBuffer, vendorSetupFormBuffer] = await Promise.all([
+    w9Key ? withRetry(() => downloadFile(w9Key), "downloadFile(w9)") : null,
+    bankLetterKey ? withRetry(() => downloadFile(bankLetterKey), "downloadFile(bankLetter)") : null,
+    withRetry(() => downloadFile(vendorFormKey), "downloadFile(vendorSetupForm)"),
+  ]);
+
+  // 2. Create NetSuite vendor via Restlet
+  const netsuiteVendorId = await withRetry(
+    () => createVendor({
+      resellerId,
+      legalCompanyName,
+      dba: reseller.dba,
+      ein,
+      entityType: reseller.entity_type,
+      addressStreet: reseller.address_street,
+      addressCity: reseller.address_city,
+      addressState: reseller.address_state,
+      addressZip: reseller.address_zip,
+      contactFirstName,
+      contactLastName,
+      contactTitle: reseller.contact_title,
+      contactEmail,
+      contactPhone: reseller.contact_phone,
+      ndaSignerFirstName: reseller.nda_signer_first_name,
+      ndaSignerLastName: reseller.nda_signer_last_name,
+      ndaSignerTitle: reseller.nda_signer_title,
+      ndaSignerEmail: reseller.nda_signer_email,
+      ndaSignerPhone: reseller.nda_signer_phone,
+      financeContactName: reseller.finance_contact_name,
+      financeContactEmail: reseller.finance_contact_email,
+      financeContactPhone: reseller.finance_contact_phone,
+      bankName: reseller.bank_name,
+      bankAba: reseller.bank_aba,
+      bankAccountNumber: reseller.bank_account_number,
+      bankSwift: reseller.bank_swift,
+      submissionDate: reseller.created_at?.toISOString().slice(0, 10),
+      w9Buffer,
+      w9FileName: 'w9.pdf',
+      bankLetterBuffer,
+      bankLetterFileName: 'bank_letter.pdf',
+      vendorSetupFormBuffer,
+      vendorSetupFormFileName: 'vendor_setup_form.pdf',
+    }),
+    "NetSuite createVendor"
+  );
 
   // 4. Update DB — hold at "NDA Approval Pending" until a dashboard user approves and sends the NDA
   await pool.query(
@@ -124,19 +157,18 @@ async function handleResellerSubmitted(payload) {
 
 /**
  * NDA_COMPLETED
- * Triggered by DocuSign webhook when envelope is fully signed.
- * - Download signed NDA PDF from DocuSign
- * - Archive to S3
- * - Attach to NetSuite vendor record
- * - Create NetSuite Task for Legal
+ * Triggered by Acrobat Sign webhook or polling when agreement is fully signed.
+ * - Download signed NDA PDF from Acrobat Sign
+ * - Archive to Azure Blob Storage
  * - Update status to "NDA Complete"
- * - Send welcome email with signed NDA + program letter
+ * - Send welcome email with signed NDA + authorization letter
  */
 async function handleNdaCompleted(payload) {
   const { resellerId, envelopeId, contactEmail, contactFirstName, contactLastName, legalCompanyName } = payload;
 
-  // Fetch reseller
-  const { rows } = await pool.query("SELECT * FROM resellers WHERE id = $1", [resellerId]);
+  // Fetch reseller with sensitive fields decrypted
+  const key = encryptionKey();
+  const { rows } = await pool.query(selectResellerSql("$2", "WHERE id = $1"), [resellerId, key]);
   if (!rows.length) throw new Error(`Reseller ${resellerId} not found`);
   const reseller = rows[0];
 
@@ -157,36 +189,26 @@ async function handleNdaCompleted(payload) {
     "Acrobat Sign downloadSignedNda"
   );
 
-  // 2. Archive to S3
+  // 2. Archive to Azure Blob Storage
   const ndaKey = `resellers/${resellerId}/signed_nda.pdf`;
   await withRetry(
     () => uploadFile({ key: ndaKey, buffer: signedNdaPdf, contentType: "application/pdf" }),
-    "S3 uploadFile(signedNda)"
+    "uploadFile(signedNda)"
   );
 
-  // 3. Update DB with NDA S3 key and advance status to NDA Complete
+  // 3. Update DB with NDA blob key and advance status to NDA Complete
   await pool.query(
     "UPDATE resellers SET signed_nda_s3_key = $1, status = 'NDA Complete', updated_at = NOW() WHERE id = $2",
     [ndaKey, resellerId]
   );
 
-  // 4. File attachment to NetSuite skipped — files are in S3
-
-  if (reseller.netsuite_vendor_id && process.env.NETSUITE_RESTLET_URL) {
-    // 5. Update NetSuite vendor status
-    await withRetry(
-      () => updateVendorStatus(reseller.netsuite_vendor_id, "NDA Complete"),
-      "NetSuite updateVendorStatus(NDA Complete)"
-    );
-  }
-
-  // 7. Generate authorization letter
+  // 4. Generate authorization letter
   const programLetterPdf = await withRetry(
     () => generateAuthorizationLetter({ legalCompanyName }),
     "generateAuthorizationLetter"
   );
 
-  // 8. Send welcome email with signed NDA and authorization letter attached
+  // 5. Send welcome email with signed NDA and authorization letter attached
   await withRetry(
     () => sendWelcomeEmail({
       to: contactEmail,
@@ -266,11 +288,14 @@ async function pollPendingAgreements() {
  * even when the Service Bus push subscription silently drops.
  */
 async function pollStuckSubmissions() {
+  const key = encryptionKey();
   const { rows } = await pool.query(
     `SELECT id, legal_company_name, contact_email, contact_first_name, contact_last_name,
-            ein, nda_signer_first_name, nda_signer_last_name, nda_signer_email
+            pgp_sym_decrypt(ein, $1)::text AS ein,
+            nda_signer_first_name, nda_signer_last_name, nda_signer_email
      FROM resellers
-     WHERE status = 'Initiated' AND created_at < NOW() - INTERVAL '2 minutes'`
+     WHERE status = 'Initiated' AND created_at < NOW() - INTERVAL '2 minutes'`,
+    [key]
   );
 
   console.log(`[worker] pollStuckSubmissions: ${rows.length} stuck record(s)`);
@@ -300,6 +325,15 @@ async function pollStuckSubmissions() {
 // ─── Main polling loop ──────────────────────────────────────────────────────────
 
 async function run() {
+  // Verify DB is reachable before subscribing to the queue
+  try {
+    await pool.query("SELECT 1");
+    console.log("[startup] Database connection OK");
+  } catch (err) {
+    console.error("[startup] Database connection failed:", err.message);
+    process.exit(1);
+  }
+
   console.log("[worker] Onboarding worker started. Subscribing to Service Bus queue...");
 
   // Poll Acrobat Sign every 5 minutes as fallback for missed webhook events
@@ -335,7 +369,9 @@ async function run() {
             legalCompanyName: payload.legalCompanyName || "Unknown",
             resellerId: payload.resellerId,
             note: `NDA_COMPLETED job failed for reseller ${payload.resellerId} (${payload.legalCompanyName}) — welcome email was NOT sent. Use the dashboard to re-trigger. Error: ${err.message}`,
-          }).catch(() => {});
+          }).catch((alertErr) => {
+            console.error("[worker] Failed to send internal alert:", alertErr.message);
+          });
         }
         // Acknowledge to prevent infinite retry loop — Service Bus dead-letters after max delivery count
         await ack();
@@ -362,5 +398,25 @@ http.createServer((req, res) => {
 
 run().catch((err) => {
   console.error("[worker] Fatal error:", err);
+  process.exit(1);
+});
+
+process.on("SIGTERM", () => {
+  console.log("[shutdown] SIGTERM received — draining DB pool and exiting");
+  pool.end()
+    .then(() => { console.log("[shutdown] Graceful shutdown complete"); process.exit(0); })
+    .catch(() => process.exit(1));
+  setTimeout(() => { console.warn("[shutdown] Forced exit after timeout"); process.exit(0); }, 10000).unref();
+});
+
+// Catch AMQP/Service Bus timeout errors and other unhandled exceptions
+// so the process exits cleanly and Azure restarts it automatically.
+process.on("uncaughtException", (err) => {
+  console.error("[worker] Uncaught exception — exiting for restart:", err.message);
+  process.exit(1);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[worker] Unhandled rejection — exiting for restart:", reason);
   process.exit(1);
 });
