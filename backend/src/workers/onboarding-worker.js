@@ -286,6 +286,10 @@ async function pollPendingAgreements() {
       if (err.response?.status === 404) {
         await pool.query("UPDATE resellers SET status = $1 WHERE id = $2", ["Cancelled", reseller.id]);
         console.warn(`[worker] Agreement not found (404), marking reseller ${reseller.id} as Cancelled`);
+      } else if (err.response?.status === 429) {
+        const retryAfter = parseInt(err.response.headers?.["retry-after"] || "60", 10);
+        console.warn(`[worker] Acrobat Sign rate limited (429) — backing off ${retryAfter}s`);
+        await sleep(retryAfter * 1000);
       } else {
         console.error(`[worker] Poll check failed for reseller ${reseller.id}:`, err.message);
       }
