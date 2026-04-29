@@ -158,7 +158,6 @@ async function hasResellerSigned(agreementId) {
   const client = await apiClient();
   const response = await client.get(`/agreements/${agreementId}/members`);
   const participantSets = response.data.participantSets || [];
-  console.log(`[acrobat] members for ${agreementId}:`, JSON.stringify(participantSets.map((s) => ({ label: s.label, order: s.order, members: s.memberInfos?.map((m) => ({ status: m.status })) }))));
   const resellerSet =
     participantSets.find((s) => s.label === "Reseller") ||
     participantSets.find((s) => s.order === 1);
