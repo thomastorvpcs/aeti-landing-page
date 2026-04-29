@@ -151,6 +151,16 @@ async function getAgreementStatus(agreementId) {
 }
 
 /**
+ * Fetch full agreement details including nextParticipantSetsInfo.
+ * Used by polling to detect when the reseller has signed but legal hasn't yet.
+ */
+async function getAgreementDetails(agreementId) {
+  const client = await apiClient();
+  const response = await client.get(`/agreements/${agreementId}`);
+  return response.data;
+}
+
+/**
  * Send a reminder to a specific participant in an agreement.
  * participantLabel: "Reseller" (order 1) or "PCSLegal" (order 2)
  */
@@ -194,4 +204,4 @@ async function cancelAgreement(agreementId) {
   console.log(`[acrobat] Agreement ${agreementId} cancelled`);
 }
 
-module.exports = { sendNdaAgreement, downloadSignedNda, registerWebhook, getAgreementStatus, sendReminder, cancelAgreement };
+module.exports = { sendNdaAgreement, downloadSignedNda, registerWebhook, getAgreementStatus, getAgreementDetails, sendReminder, cancelAgreement };
