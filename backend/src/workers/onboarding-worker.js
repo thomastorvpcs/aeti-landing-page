@@ -27,7 +27,7 @@ const pool = require("../db");
 const { encryptionKey, selectResellerSql } = require("../db/crypto");
 const { subscribe, enqueue } = require("../services/queue");
 const { uploadFile, downloadFile } = require("../services/storage");
-const { downloadSignedNda, getAgreementStatus, getAgreementDetails } = require("../services/acrobat-sign");
+const { downloadSignedNda, getAgreementStatus, hasResellerSigned } = require("../services/acrobat-sign");
 const { createVendor } = require("../services/netsuite");
 const { sendWelcomeEmail, sendInternalAlert } = require("../services/sendgrid");
 const { generateAuthorizationLetter, generateVendorSetupForm } = require("../services/pdf");
@@ -244,8 +244,7 @@ async function pollPendingAgreements() {
 
   for (const reseller of rows) {
     try {
-      const details = await getAgreementDetails(reseller.docusign_envelope_id);
-      const status = details.status;
+      const status = await getAgreementStatus(reseller.docusign_envelope_id);
       console.log(`[worker] Agreement ${reseller.docusign_envelope_id} status: ${status}`);
 
       if (status === "CANCELLED" || status === "RECALLED") {
@@ -272,11 +271,10 @@ async function pollPendingAgreements() {
       }
 
       // Webhook missed: reseller signed but DB still shows "NDA Pending".
-      // Detect by checking if the next signer is PCSLegal (order 2).
+      // Confirm via the /members endpoint — check if Reseller (order 1) has COMPLETED.
       if (status === "OUT_FOR_SIGNATURE" && reseller.status === "NDA Pending") {
-        const nextSets = details.nextParticipantSetsInfo || [];
-        const nextIsLegal = nextSets.some((s) => s.label === "PCSLegal" || s.order === 2);
-        if (nextIsLegal) {
+        const resellerSigned = await hasResellerSigned(reseller.docusign_envelope_id);
+        if (resellerSigned) {
           await pool.query(
             "UPDATE resellers SET status = $1, reseller_signed_at = NOW() WHERE id = $2 AND status = 'NDA Pending'",
             ["Awaiting Countersign", reseller.id]

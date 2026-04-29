@@ -151,13 +151,18 @@ async function getAgreementStatus(agreementId) {
 }
 
 /**
- * Fetch full agreement details including nextParticipantSetsInfo.
- * Used by polling to detect when the reseller has signed but legal hasn't yet.
+ * Returns true if the first-order participant (Reseller) has completed signing.
+ * Used by polling to detect when the reseller signed but the webhook was missed.
  */
-async function getAgreementDetails(agreementId) {
+async function hasResellerSigned(agreementId) {
   const client = await apiClient();
-  const response = await client.get(`/agreements/${agreementId}`);
-  return response.data;
+  const response = await client.get(`/agreements/${agreementId}/members`);
+  const participantSets = response.data.participantSets || [];
+  const resellerSet =
+    participantSets.find((s) => s.label === "Reseller") ||
+    participantSets.find((s) => s.order === 1);
+  if (!resellerSet) return false;
+  return resellerSet.memberInfos.every((m) => m.status === "COMPLETED");
 }
 
 /**
@@ -204,4 +209,4 @@ async function cancelAgreement(agreementId) {
   console.log(`[acrobat] Agreement ${agreementId} cancelled`);
 }
 
-module.exports = { sendNdaAgreement, downloadSignedNda, registerWebhook, getAgreementStatus, getAgreementDetails, sendReminder, cancelAgreement };
+module.exports = { sendNdaAgreement, downloadSignedNda, registerWebhook, getAgreementStatus, hasResellerSigned, sendReminder, cancelAgreement };
