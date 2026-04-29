@@ -371,13 +371,18 @@ function ChangePasswordModal({ onClose }) {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
 
+  const rules = [
+    { label: "At least 8 characters", met: newPassword.length >= 8 },
+    { label: "At least one number", met: /[0-9]/.test(newPassword) },
+    { label: "At least one special character", met: /[^A-Za-z0-9]/.test(newPassword) },
+  ];
+  const passwordValid = rules.every((r) => r.met);
+  const passwordsMatch = confirm.length > 0 && newPassword === confirm;
+  const mismatch = confirm.length > 0 && newPassword !== confirm;
+
   async function handleSubmit(e) {
     e.preventDefault();
-    if (newPassword !== confirm) { setError("Passwords do not match."); return; }
-    if (newPassword.length < 8 || !/[0-9]/.test(newPassword) || !/[^A-Za-z0-9]/.test(newPassword)) {
-      setError("Password must be at least 8 characters and include a number and a special character.");
-      return;
-    }
+    if (!passwordValid || !passwordsMatch) return;
     setLoading(true);
     setError(null);
     try {
@@ -405,27 +410,47 @@ function ChangePasswordModal({ onClose }) {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-3">
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="New password (min 8 chars, 1 number, 1 special)"
-              className="form-input"
-              required
-              autoFocus
-            />
-            <input
-              type="password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              placeholder="Confirm new password"
-              className="form-input"
-              required
-            />
+            <div>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="New password"
+                className="form-input"
+                required
+                autoFocus
+              />
+              {newPassword.length > 0 && (
+                <ul className="mt-1.5 space-y-1">
+                  {rules.map((r) => (
+                    <li key={r.label} className={`flex items-center gap-1.5 text-xs ${r.met ? "text-green-600" : "text-red-500"}`}>
+                      <span>{r.met ? "✓" : "✗"}</span>
+                      {r.label}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div>
+              <input
+                type="password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                placeholder="Confirm new password"
+                className="form-input"
+                required
+              />
+              {mismatch && (
+                <p className="mt-1.5 text-xs text-red-500 flex items-center gap-1.5"><span>✗</span> Passwords do not match</p>
+              )}
+              {passwordsMatch && (
+                <p className="mt-1.5 text-xs text-green-600 flex items-center gap-1.5"><span>✓</span> Passwords match</p>
+              )}
+            </div>
             {error && <p className="text-sm text-red-500">{error}</p>}
             <div className="flex gap-2 pt-1">
               <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
-              <button type="submit" disabled={loading} className="btn-primary flex-1">
+              <button type="submit" disabled={loading || !passwordValid || !passwordsMatch} className="btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed">
                 {loading ? "Saving…" : "Save password"}
               </button>
             </div>
