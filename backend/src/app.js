@@ -16,6 +16,11 @@ app.set("trust proxy", 1);
 // Security headers (CSP disabled — Vite assets are self-hosted)
 app.use(helmet({ contentSecurityPolicy: false }));
 
+// Webhook route is exempt from CORS — it's a server-to-server call from Adobe
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
+app.use("/acrobat/webhook", acrobatWebhookRouter);
+
 // CORS — only needed for API routes, not static assets
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || "").split(",").filter(Boolean);
 if (allowedOrigins.length === 0) {
@@ -32,10 +37,6 @@ app.use(
     credentials: true,
   })
 );
-
-// Body parsing
-app.use(express.json({ limit: "1mb" }));
-app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
 // Request logging
 app.use((req, res, next) => {
@@ -54,7 +55,6 @@ app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
 // API routes
 app.use("/api/submit", submissionRateLimiter, submissionRouter);
-app.use("/acrobat/webhook", acrobatWebhookRouter);
 app.use("/api/dashboard/auth", dashboardLoginRateLimiter, dashboardAuthRouter);
 app.use("/api/dashboard", dashboardApiRateLimiter, dashboardRouter);
 
