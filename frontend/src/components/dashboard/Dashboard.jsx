@@ -83,6 +83,23 @@ function DetailModal({ reseller, onClose, onDelete }) {
       .finally(() => setFilesLoading(false));
   }, [reseller?.id]);
 
+  async function handleDownload(type, filename) {
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_BASE_URL || ""}/api/dashboard/resellers/${reseller.id}/files/${type}`,
+        { headers: authHeaders(), responseType: "blob" }
+      );
+      const url = URL.createObjectURL(response.data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert("Failed to download file. Please try again.");
+    }
+  }
+
   async function handleResend() {
     setResending(true);
     setResendResult(null);
@@ -330,24 +347,22 @@ function DetailModal({ reseller, onClose, onDelete }) {
             ) : (
               <div className="flex flex-wrap gap-2">
                 {[
-                  { label: "W-9", url: files?.w9 },
-                  { label: "Bank letter", url: files?.bankLetter },
-                  { label: "Vendor setup form", url: files?.vendorForm },
-                  { label: "Signed NDA", url: files?.signedNda },
-                ].map(({ label, url }) =>
-                  url ? (
-                    <a
+                  { label: "W-9",               type: "w9",           filename: "w9.pdf",                 available: files?.w9 },
+                  { label: "Bank letter",        type: "bankLetter",   filename: "bank_letter.pdf",        available: files?.bankLetter },
+                  { label: "Vendor setup form",  type: "vendorForm",   filename: "vendor_setup_form.pdf",  available: files?.vendorForm },
+                  { label: "Signed NDA",         type: "signedNda",    filename: "signed_nda.pdf",         available: files?.signedNda },
+                ].map(({ label, type, filename, available }) =>
+                  available ? (
+                    <button
                       key={label}
-                      href={url}
-                      target="_blank"
-                      rel="noreferrer"
+                      onClick={() => handleDownload(type, filename)}
                       className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-brand-light hover:border-brand-blue hover:text-brand-blue transition-colors"
                     >
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                       </svg>
                       {label}
-                    </a>
+                    </button>
                   ) : (
                     <span key={label} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-xs text-gray-300">
                       {label}

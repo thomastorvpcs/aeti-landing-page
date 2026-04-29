@@ -1,7 +1,7 @@
 const express = require("express");
 const pool = require("../db");
 const { encryptionKey } = require("../db/crypto");
-const { getPresignedUrl, blobExists, deleteFolder } = require("../services/storage");
+const { downloadFile, blobExists, deleteFolder } = require("../services/storage");
 const { sendReminder, cancelAgreement, sendNdaAgreement } = require("../services/acrobat-sign");
 const { enqueue } = require("../services/queue");
 const requireDashboardAuth = require("../middleware/requireDashboardAuth");
@@ -83,29 +83,68 @@ router.get("/audit-log", async (req, res, next) => {
 router.get("/resellers/:id/files", dashboardActionRateLimiter, async (req, res, next) => {
   try {
     const { rows } = await pool.query(
-      "SELECT id, legal_company_name, w9_s3_key, bank_letter_s3_key, signed_nda_s3_key FROM resellers WHERE id = $1",
+      "SELECT id, w9_s3_key, bank_letter_s3_key, signed_nda_s3_key FROM resellers WHERE id = $1",
       [req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: "Not found" });
 
-    const { id, legal_company_name, w9_s3_key, bank_letter_s3_key, signed_nda_s3_key } = rows[0];
+    const { id, w9_s3_key, bank_letter_s3_key, signed_nda_s3_key } = rows[0];
     const vendorFormKey = `resellers/${id}/vendor_setup_form.pdf`;
 
-    const [w9Url, bankLetterUrl, vendorFormUrl, signedNdaUrl] = await Promise.all([
-      w9_s3_key ? getPresignedUrl(w9_s3_key, 300) : null,
-      bank_letter_s3_key ? getPresignedUrl(bank_letter_s3_key, 300) : null,
-      blobExists(vendorFormKey).then((exists) => exists ? getPresignedUrl(vendorFormKey, 300) : null),
-      signed_nda_s3_key ? getPresignedUrl(signed_nda_s3_key, 300) : null,
-    ]);
+    const [vendorFormExists] = await Promise.all([blobExists(vendorFormKey)]);
+
+    res.json({
+      w9: !!w9_s3_key,
+      bankLetter: !!bank_letter_s3_key,
+      vendorForm: vendorFormExists,
+      signedNda: !!signed_nda_s3_key,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+const FILE_TYPE_MAP = {
+  w9:             (r) => r.w9_s3_key,
+  bankLetter:     (r) => r.bank_letter_s3_key,
+  vendorForm:     (r) => `resellers/${r.id}/vendor_setup_form.pdf`,
+  signedNda:      (r) => r.signed_nda_s3_key,
+};
+
+const FILE_NAMES = {
+  w9:           "w9.pdf",
+  bankLetter:   "bank_letter.pdf",
+  vendorForm:   "vendor_setup_form.pdf",
+  signedNda:    "signed_nda.pdf",
+};
+
+router.get("/resellers/:id/files/:type", dashboardActionRateLimiter, async (req, res, next) => {
+  try {
+    const { id, type } = req.params;
+    if (!UUID_RE.test(id) || !FILE_TYPE_MAP[type]) return res.status(400).json({ error: "Invalid request" });
+
+    const { rows } = await pool.query(
+      "SELECT id, legal_company_name, w9_s3_key, bank_letter_s3_key, signed_nda_s3_key FROM resellers WHERE id = $1",
+      [id]
+    );
+    if (!rows.length) return res.status(404).json({ error: "Not found" });
+
+    const key = FILE_TYPE_MAP[type](rows[0]);
+    if (!key) return res.status(404).json({ error: "File not available" });
+
+    const buffer = await downloadFile(key);
 
     await auditLog({
-      action: "Files accessed",
+      action: `File downloaded: ${type}`,
       resellerId: id,
-      resellerName: legal_company_name,
+      resellerName: rows[0].legal_company_name,
       performedBy: req.dashboardUser.email,
     });
 
-    res.json({ w9: w9Url, bankLetter: bankLetterUrl, vendorForm: vendorFormUrl, signedNda: signedNdaUrl });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${FILE_NAMES[type]}"`);
+    res.setHeader("Content-Length", buffer.length);
+    res.send(buffer);
   } catch (err) {
     next(err);
   }
