@@ -26,7 +26,7 @@ const http = require("http");
 const pool = require("../db");
 const { encryptionKey, selectResellerSql } = require("../db/crypto");
 const { subscribe, enqueue } = require("../services/queue");
-const { uploadFile, downloadFile, getPresignedUrl } = require("../services/storage");
+const { uploadFile, downloadFile } = require("../services/storage");
 const { downloadSignedNda, getAgreementStatus } = require("../services/acrobat-sign");
 const { createVendor } = require("../services/netsuite");
 const { sendWelcomeEmail, sendInternalAlert } = require("../services/sendgrid");
@@ -93,11 +93,11 @@ async function handleResellerSubmitted(payload) {
   );
   console.log(`[worker] Vendor setup form uploaded: ${vendorFormKey}`);
 
-  // Generate 15-minute SAS URLs for all three documents — NetSuite downloads immediately
-  const [w9Url, bankLetterUrl, vendorSetupFormUrl] = await Promise.all([
-    w9Key ? getPresignedUrl(w9Key, 900) : null,
-    bankLetterKey ? getPresignedUrl(bankLetterKey, 900) : null,
-    getPresignedUrl(vendorFormKey, 900),
+  // Download files from blob storage and encode as base64 for direct RESTlet upload
+  const [w9Buffer, bankLetterBuffer, vendorSetupFormBuffer] = await Promise.all([
+    w9Key ? withRetry(() => downloadFile(w9Key), "downloadFile(w9)") : null,
+    bankLetterKey ? withRetry(() => downloadFile(bankLetterKey), "downloadFile(bankLetter)") : null,
+    withRetry(() => downloadFile(vendorFormKey), "downloadFile(vendorSetupForm)"),
   ]);
 
   // 2. Create NetSuite vendor via Restlet
@@ -130,9 +130,12 @@ async function handleResellerSubmitted(payload) {
       bankAccountNumber: reseller.bank_account_number,
       bankSwift: reseller.bank_swift,
       submissionDate: reseller.created_at?.toISOString().slice(0, 10),
-      w9Url,
-      bankLetterUrl,
-      vendorSetupFormUrl,
+      w9Buffer,
+      w9FileName: 'w9.pdf',
+      bankLetterBuffer,
+      bankLetterFileName: 'bank_letter.pdf',
+      vendorSetupFormBuffer,
+      vendorSetupFormFileName: 'vendor_setup_form.pdf',
     }),
     "NetSuite createVendor"
   );
