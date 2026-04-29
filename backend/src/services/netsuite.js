@@ -169,7 +169,6 @@ async function createVendor(reseller) {
     bankLetterContent: bankLetterBuffer?.toString('base64'),
     vendorSetupFormFileName,
     vendorSetupFormContent: vendorSetupFormBuffer?.toString('base64'),
-    fileCabinetFolderId: process.env.NETSUITE_FILE_CABINET_FOLDER_ID,
   });
 
   console.log("[netsuite] createVendor:", legalCompanyName, ein);
