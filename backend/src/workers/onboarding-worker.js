@@ -220,7 +220,6 @@ async function handleNdaCompleted(payload) {
       legalCompanyName,
       signedNdaPdf,
       programLetterPdf,
-      ein: reseller.ein,
       envelopeId,
       netsuiteVendorId: reseller.netsuite_vendor_id,
     }),

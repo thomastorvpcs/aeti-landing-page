@@ -171,7 +171,7 @@ async function createVendor(reseller) {
     vendorSetupFormContent: vendorSetupFormBuffer?.toString('base64'),
   });
 
-  console.log("[netsuite] createVendor:", legalCompanyName, ein);
+  console.log("[netsuite] createVendor:", legalCompanyName);
 
   const response = await restletRequest(payload);
   const data = response.data;

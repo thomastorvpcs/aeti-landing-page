@@ -21,7 +21,6 @@ const TEMPLATE_INTERNAL_ALERT = process.env.SENDGRID_TEMPLATE_INTERNAL_ALERT;
  * @param {string} opts.legalCompanyName
  * @param {Buffer} opts.signedNdaPdf     - PDF buffer of the signed NDA
  * @param {Buffer} [opts.programLetterPdf] - PDF buffer of the program letter
- * @param {string} opts.ein              - For SendGrid custom args tracking
  * @param {string} opts.envelopeId
  * @param {string} opts.netsuiteVendorId
  */
@@ -32,7 +31,6 @@ async function sendWelcomeEmail({
   legalCompanyName,
   signedNdaPdf,
   programLetterPdf,
-  ein,
   envelopeId,
   netsuiteVendorId,
 }) {
@@ -59,7 +57,6 @@ async function sendWelcomeEmail({
     from: { email: FROM_EMAIL, name: FROM_NAME },
     attachments,
     customArgs: {
-      reseller_ein: ein,
       docusign_envelope_id: envelopeId,
       netsuite_vendor_id: netsuiteVendorId || "",
     },
@@ -97,7 +94,6 @@ async function sendInternalAlert({
     to: OPS_ALERT_EMAIL,
     from: { email: FROM_EMAIL, name: FROM_NAME },
     customArgs: {
-      reseller_ein: ein || "",
       reseller_id: resellerId,
     },
   };
