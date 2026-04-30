@@ -380,6 +380,7 @@ function DetailModal({ reseller, onClose, onDelete }) {
 
 
 function ChangePasswordModal({ onClose }) {
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
@@ -397,13 +398,13 @@ function ChangePasswordModal({ onClose }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!passwordValid || !passwordsMatch) return;
+    if (!currentPassword || !passwordValid || !passwordsMatch) return;
     setLoading(true);
     setError(null);
     try {
       await axios.post(
         `${import.meta.env.VITE_API_BASE_URL || ""}/api/dashboard/auth/change-password`,
-        { newPassword },
+        { currentPassword, newPassword },
         { headers: authHeaders() }
       );
       setSuccess(true);
@@ -428,12 +429,22 @@ function ChangePasswordModal({ onClose }) {
             <div>
               <input
                 type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="Current password"
+                className="form-input"
+                required
+                autoFocus
+              />
+            </div>
+            <div>
+              <input
+                type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="New password"
                 className="form-input"
                 required
-                autoFocus
               />
               {newPassword.length > 0 && (
                 <ul className="mt-1.5 space-y-1">
@@ -465,7 +476,7 @@ function ChangePasswordModal({ onClose }) {
             {error && <p className="text-sm text-red-500">{error}</p>}
             <div className="flex gap-2 pt-1">
               <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
-              <button type="submit" disabled={loading || !passwordValid || !passwordsMatch} className="btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed">
+              <button type="submit" disabled={loading || !currentPassword || !passwordValid || !passwordsMatch} className="btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed">
                 {loading ? "Saving…" : "Save password"}
               </button>
             </div>

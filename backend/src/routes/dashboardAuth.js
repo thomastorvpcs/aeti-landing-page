@@ -87,9 +87,27 @@ router.post("/create-user", createUserLimiter, async (req, res, next) => {
 // POST /api/dashboard/auth/change-password  (requires JWT)
 router.post("/change-password", requireDashboardAuth, async (req, res, next) => {
   try {
+    const currentPassword = req.body.currentPassword || "";
     const newPassword = req.body.newPassword || "";
+
+    if (!currentPassword) {
+      return res.status(422).json({ error: "Current password is required." });
+    }
     if (!isValidPassword(newPassword)) {
       return res.status(422).json({ error: "Password must be at least 8 characters and include a number and a special character." });
+    }
+
+    const { rows } = await pool.query(
+      "SELECT password_hash FROM dashboard_users WHERE id = $1",
+      [req.dashboardUser.id]
+    );
+    if (!rows.length) {
+      return res.status(401).json({ error: "Unauthorized." });
+    }
+
+    const match = await verifyPassword(currentPassword, rows[0].password_hash);
+    if (!match) {
+      return res.status(401).json({ error: "Current password is incorrect." });
     }
 
     const passwordHash = await hashPassword(newPassword);
