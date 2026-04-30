@@ -168,13 +168,18 @@ async function handleResellerSubmitted(payload) {
  * - Send welcome email with signed NDA + authorization letter
  */
 async function handleNdaCompleted(payload) {
-  const { resellerId, envelopeId, contactEmail, contactFirstName, contactLastName, legalCompanyName } = payload;
+  const { resellerId, envelopeId } = payload;
 
   // Fetch reseller with sensitive fields decrypted
   const key = encryptionKey();
   const { rows } = await pool.query(selectResellerSql("$2", "WHERE id = $1"), [resellerId, key]);
   if (!rows.length) throw new Error(`Reseller ${resellerId} not found`);
   const reseller = rows[0];
+
+  const contactEmail = reseller.contact_email;
+  const contactFirstName = reseller.contact_first_name;
+  const contactLastName = reseller.contact_last_name;
+  const legalCompanyName = reseller.legal_company_name;
 
   // Idempotency guard — if the signed NDA is already uploaded a previous job
   // completed successfully. Skip to avoid sending duplicate welcome emails.
