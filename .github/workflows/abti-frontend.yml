@@ -24,6 +24,8 @@ jobs:
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
+        env:
+          VITE_API_BASE_URL: ${{ inputs.environment == 'production' && 'https://abti-api.azurewebsites.net' || 'https://abti-api-dev.azurewebsites.net' }}
         with:
           azure_static_web_apps_api_token: ${{ inputs.environment == 'production' && secrets.ABTI_FRONTEND_DEPLOY_TOKEN_PROD || secrets.ABTI_FRONTEND_DEPLOY_TOKEN_DEV }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
