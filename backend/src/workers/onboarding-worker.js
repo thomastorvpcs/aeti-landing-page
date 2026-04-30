@@ -50,12 +50,13 @@ async function withRetry(fn, label) {
     } catch (err) {
       const status = err.response?.status;
       const msg = err.message;
+      const body = err.response?.body ? JSON.stringify(err.response.body) : "";
       if (attempt === MAX_RETRIES) {
-        console.error(`[worker] ${label} failed after ${MAX_RETRIES} attempts: status=${status ?? "none"} msg=${msg}`);
+        console.error(`[worker] ${label} failed after ${MAX_RETRIES} attempts: status=${status ?? "none"} msg=${msg} body=${body}`);
         throw err;
       }
       const delay = RETRY_BASE_MS * Math.pow(2, attempt - 1);
-      console.warn(`[worker] ${label} attempt ${attempt} failed: status=${status ?? "none"} msg=${msg}. Retrying in ${delay}ms...`);
+      console.warn(`[worker] ${label} attempt ${attempt} failed: status=${status ?? "none"} msg=${msg} body=${body}. Retrying in ${delay}ms...`);
       await sleep(delay);
     }
   }
