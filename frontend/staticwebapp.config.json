@@ -14,10 +14,6 @@
     {
       "route": "/acrobat/*",
       "rewrite": "https://abti-api.azurewebsites.net/acrobat/*"
-    },
-    {
-      "route": "/*",
-      "rewrite": "/index.html"
     }
   ],
   "navigationFallback": {
