@@ -57,7 +57,7 @@ async function sendWelcomeEmail({
     from: { email: FROM_EMAIL, name: FROM_NAME },
     attachments,
     customArgs: {
-      docusign_envelope_id: envelopeId,
+      acrobat_envelope_id: envelopeId,
       netsuite_vendor_id: netsuiteVendorId || "",
     },
   };

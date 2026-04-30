@@ -67,7 +67,7 @@ async function withRetry(fn, label) {
  * RESELLER_SUBMITTED
  * Triggered immediately after form submission.
  * - Create NetSuite vendor record
- * - Send DocuSign NDA envelope
+ * - Send Acrobat Sign NDA envelope
  * - Send internal ops alert via SendGrid
  * - Update DB with NS vendor ID and DS envelope ID
  */
