@@ -43,11 +43,10 @@ function verifyClientCert(req, res, next) {
 }
 
 const router = express.Router();
-router.use(verifyClientCert);
 
 /**
  * Acrobat Sign webhook verification.
- * Acrobat Sign sends a GET with X-AdobeSign-ClientId header.
+ * Acrobat Sign sends a GET with X-AdobeSign-ClientId header during registration — no client cert.
  * Must respond 200 with the client ID in header AND body — but only if it matches our app.
  */
 router.get("/", (req, res) => {
@@ -65,7 +64,7 @@ router.get("/", (req, res) => {
 /**
  * Acrobat Sign webhook event handler.
  */
-router.post("/", async (req, res) => {
+router.post("/", verifyClientCert, async (req, res) => {
   const clientId = req.headers["x-adobesign-clientid"];
   if (!EXPECTED_CLIENT_ID || clientId !== EXPECTED_CLIENT_ID) {
     console.warn("[acrobat-webhook] POST rejected — client ID mismatch");
