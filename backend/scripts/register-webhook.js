@@ -1,7 +1,7 @@
 require("dotenv").config();
 const { registerWebhook } = require("../src/services/acrobat-sign");
 
-const WEBHOOK_URL = "https://abti-api.azurewebsites.net/acrobat/webhook";
+const WEBHOOK_URL = "https://resellers-dev.pcsww.com/acrobat/webhook";
 
 (async () => {
   try {
