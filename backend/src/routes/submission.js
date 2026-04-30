@@ -111,8 +111,16 @@ router.post("/", upload.fields([{ name: "w9", maxCount: 1 }, { name: "bankLetter
       return res.status(422).json({ error: "Bank letter is required." });
     }
 
-    // Reuse existing ID if this EIN has already been submitted, so storage keys stay consistent
-    const existing = await pool.query("SELECT id FROM resellers WHERE ein_hmac = $1", [einHmac(ein.trim())]);
+    // Block resubmissions — if this EIN already exists and is past "Initiated", reject
+    const existing = await pool.query(
+      "SELECT id, status FROM resellers WHERE ein_hmac = $1",
+      [einHmac(ein.trim())]
+    );
+    if (existing.rows.length > 0 && existing.rows[0].status !== "Initiated") {
+      return res.status(409).json({
+        error: "An application for this EIN has already been submitted. Please contact PCS directly if you need to make changes.",
+      });
+    }
     const resellerId = existing.rows[0]?.id || uuidv4();
 
     const MIME_TO_EXT = { "application/pdf": "pdf", "image/jpeg": "jpg", "image/png": "png" };
@@ -157,17 +165,6 @@ router.post("/", upload.fields([{ name: "w9", maxCount: 1 }, { name: "bankLetter
         $32, $33, 'Initiated',
         $34, $35, $36, $37, $38
       )
-      ON CONFLICT (ein_hmac) DO UPDATE SET
-        legal_company_name    = EXCLUDED.legal_company_name,
-        ein                   = EXCLUDED.ein,
-        w9_s3_key             = EXCLUDED.w9_s3_key,
-        bank_letter_s3_key    = EXCLUDED.bank_letter_s3_key,
-        nda_signer_first_name = EXCLUDED.nda_signer_first_name,
-        nda_signer_last_name  = EXCLUDED.nda_signer_last_name,
-        nda_signer_title      = EXCLUDED.nda_signer_title,
-        nda_signer_email      = EXCLUDED.nda_signer_email,
-        nda_signer_phone      = EXCLUDED.nda_signer_phone,
-        updated_at            = NOW()
       RETURNING id, status`,
       [
         resellerId,              // $1
