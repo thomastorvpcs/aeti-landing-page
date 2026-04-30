@@ -7,8 +7,13 @@ const { getAgreementStatus } = require("../services/acrobat-sign");
 const EXPECTED_CLIENT_ID = process.env.ACROBAT_CLIENT_ID;
 
 // Compute expected fingerprint once at startup — ACROBAT_WEBHOOK_CERT is the public cert
-// from webhook-client.crt, stored as a PEM string in the App Service environment variable.
-const certPem = (process.env.ACROBAT_WEBHOOK_CERT || "").replace(/\\n/g, "\n");
+// stored either as a base64-encoded PEM (preferred, avoids portal newline mangling) or as a
+// PEM string with literal \n separators.
+let _certRaw = process.env.ACROBAT_WEBHOOK_CERT || "";
+if (_certRaw && !_certRaw.includes("-----BEGIN")) {
+  _certRaw = Buffer.from(_certRaw, "base64").toString("utf8");
+}
+const certPem = _certRaw.replace(/\\n/g, "\n").trim();
 const EXPECTED_FINGERPRINT = certPem
   ? new crypto.X509Certificate(certPem).fingerprint256
   : null;
