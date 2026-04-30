@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const express = require("express");
 const pool = require("../db");
 const { enqueue } = require("../services/queue");
@@ -5,7 +6,39 @@ const { getAgreementStatus } = require("../services/acrobat-sign");
 
 const EXPECTED_CLIENT_ID = process.env.ACROBAT_CLIENT_ID;
 
+// Compute expected fingerprint once at startup — ACROBAT_WEBHOOK_CERT is the public cert
+// from webhook-client.crt, stored as a PEM string in the App Service environment variable.
+const certPem = (process.env.ACROBAT_WEBHOOK_CERT || "").replace(/\\n/g, "\n");
+const EXPECTED_FINGERPRINT = certPem
+  ? new crypto.X509Certificate(certPem).fingerprint256
+  : null;
+if (EXPECTED_FINGERPRINT) {
+  console.log("[acrobat-webhook] Client cert fingerprint loaded:", EXPECTED_FINGERPRINT);
+}
+
+// Verify the client certificate Adobe presents on every webhook call (two-way SSL).
+// Azure App Service terminates TLS and injects the client cert as base64 DER in X-ARR-ClientCert.
+function verifyClientCert(req, res, next) {
+  const header = req.headers["x-arr-clientcert"];
+  if (!header) {
+    console.warn("[acrobat-webhook] Missing client certificate");
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  try {
+    const presented = new crypto.X509Certificate(Buffer.from(header, "base64"));
+    if (presented.fingerprint256 !== EXPECTED_FINGERPRINT) {
+      console.warn("[acrobat-webhook] Client certificate fingerprint mismatch");
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+  } catch (err) {
+    console.error("[acrobat-webhook] Certificate parse error:", err.message);
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  next();
+}
+
 const router = express.Router();
+router.use(verifyClientCert);
 
 /**
  * Acrobat Sign webhook verification.

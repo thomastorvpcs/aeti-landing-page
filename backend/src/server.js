@@ -12,6 +12,7 @@ const REQUIRED_ENV = [
   "SENDGRID_API_KEY",
   "SENDGRID_FROM_EMAIL",
   "ACROBAT_CLIENT_ID",
+  "ACROBAT_WEBHOOK_CERT",
 ];
 
 function checkEnv() {
