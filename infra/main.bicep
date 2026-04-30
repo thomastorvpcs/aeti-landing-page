@@ -21,6 +21,13 @@ param dbSkuTier string
 param geoRedundantBackup bool
 param docusignBasePath string
 
+// Networking (existing VNet in the platform networking RG)
+param vnetResourceGroup string
+param vnetName string
+param storagePrivateEndpointSubnetName string
+param appServicesSubnetName string
+param sqlPrivateEndpointSubnetName string
+
 // Organizational config
 param pcsOpsEmail string
 param pcsLegalEmail string
@@ -55,6 +62,10 @@ module infrastructure './modules/infrastructure.bicep' = {
     dbAdminPassword: dbAdminPassword
     jwtSecret: jwtSecret
     adminSecret: adminSecret
+    vnetResourceGroup: vnetResourceGroup
+    vnetName: vnetName
+    storagePrivateEndpointSubnetName: storagePrivateEndpointSubnetName
+    sqlPrivateEndpointSubnetName: sqlPrivateEndpointSubnetName
   }
 }
 
@@ -79,6 +90,9 @@ module compute './modules/compute.bicep' = {
     pcsLegalEmail: pcsLegalEmail
     pcsLegalName: pcsLegalName
     docusignBasePath: docusignBasePath
+    vnetResourceGroup: vnetResourceGroup
+    vnetName: vnetName
+    appServicesSubnetName: appServicesSubnetName
   }
 }
 

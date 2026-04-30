@@ -11,11 +11,24 @@ param pcsOpsEmail string
 param pcsLegalEmail string
 param pcsLegalName string
 param docusignBasePath string
+param vnetResourceGroup string
+param vnetName string
+param appServicesSubnetName string
 
 // Builds the Key Vault Reference string for a given secret name.
 // The App Service runtime resolves these at startup; the application code sees
 // the plain secret value and requires no changes.
 var kvRef = 'VaultName=${keyVaultName};SecretName='
+
+resource vnet 'Microsoft.Network/virtualNetworks@2023-11-01' existing = {
+  name: vnetName
+  scope: resourceGroup(vnetResourceGroup)
+}
+
+resource appServicesSubnet 'Microsoft.Network/virtualNetworks/subnets@2023-11-01' existing = {
+  parent: vnet
+  name: appServicesSubnetName
+}
 
 // App Service Plan
 resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01' = {
@@ -49,11 +62,14 @@ resource apiApp 'Microsoft.Web/sites@2023-01-01' = {
   properties: {
     serverFarmId: appServicePlan.id
     httpsOnly: true
+    virtualNetworkSubnetId: appServicesSubnet.id
     siteConfig: {
       linuxFxVersion: 'NODE|20-lts'
       alwaysOn: true
       minTlsVersion: '1.2'
       ftpsState: 'Disabled'
+      vnetRouteAllEnabled: true
+      ipSecurityRestrictionsDefaultAction: 'Allow'
       appSettings: [
         // Plain values
         { name: 'NODE_ENV', value: 'production' }
@@ -117,12 +133,14 @@ resource workerApp 'Microsoft.Web/sites@2023-01-01' = {
   properties: {
     serverFarmId: appServicePlan.id
     httpsOnly: true
+    virtualNetworkSubnetId: appServicesSubnet.id
     siteConfig: {
       linuxFxVersion: 'NODE|20-lts'
       alwaysOn: true
       appCommandLine: 'node src/workers/onboarding-worker.js'
       minTlsVersion: '1.2'
       ftpsState: 'Disabled'
+      vnetRouteAllEnabled: true
       appSettings: [
         // Plain values
         { name: 'NODE_ENV', value: 'production' }

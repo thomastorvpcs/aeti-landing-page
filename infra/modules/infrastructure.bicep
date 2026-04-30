@@ -6,6 +6,10 @@ param dbServerName string
 param dbSkuName string
 param dbSkuTier string
 param geoRedundantBackup bool
+param vnetResourceGroup string
+param vnetName string
+param storagePrivateEndpointSubnetName string
+param sqlPrivateEndpointSubnetName string
 
 @secure()
 param dbAdminPassword string
@@ -20,6 +24,26 @@ var dbAdminUser = 'abtidbadmin'
 var dbName = 'abti_onboarding'
 var serviceBusQueueName = 'onboarding-jobs'
 var serviceBusAuthRuleName = 'app-send-listen'
+
+// var dnsZoneBase = '/subscriptions/${subscription().subscriptionId}/resourceGroups/${vnetResourceGroup}/providers/Microsoft.Network/privateDnsZones'
+// var blobDnsZoneId = '${dnsZoneBase}/privatelink.blob.core.windows.net'
+// var postgresDnsZoneId = '${dnsZoneBase}/privatelink.postgres.database.azure.com'
+// var kvDnsZoneId = '${dnsZoneBase}/privatelink.vaultcore.azure.net'
+
+resource vnet 'Microsoft.Network/virtualNetworks@2023-11-01' existing = {
+  name: vnetName
+  scope: resourceGroup(vnetResourceGroup)
+}
+
+resource storageSubnet 'Microsoft.Network/virtualNetworks/subnets@2023-11-01' existing = {
+  parent: vnet
+  name: storagePrivateEndpointSubnetName
+}
+
+resource sqlSubnet 'Microsoft.Network/virtualNetworks/subnets@2023-11-01' existing = {
+  parent: vnet
+  name: sqlPrivateEndpointSubnetName
+}
 
 // Key Vault
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
@@ -47,6 +71,10 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
     minimumTlsVersion: 'TLS1_2'
     supportsHttpsTrafficOnly: true
     allowBlobPublicAccess: false
+    networkAcls: {
+      defaultAction: 'Deny'
+      bypass: 'AzureServices'
+    }
   }
 }
 
@@ -64,6 +92,8 @@ resource blobContainer 'Microsoft.Storage/storageAccounts/blobServices/container
 }
 
 // Service Bus
+// Private endpoints require Premium tier. This namespace stays on Standard; access is
+// restricted at the application layer via connection strings stored in Key Vault.
 resource serviceBusNamespace 'Microsoft.ServiceBus/namespaces@2021-11-01' = {
   name: serviceBusNamespaceName
   location: location
@@ -114,7 +144,7 @@ resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2026-01-01-pr
       geoRedundantBackup: geoRedundantBackup ? 'Enabled' : 'Disabled'
     }
     network: {
-      publicNetworkAccess: 'Enabled'
+      publicNetworkAccess: 'Disabled'
     }
     highAvailability: {
       mode: 'Disabled'
@@ -123,15 +153,6 @@ resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2026-01-01-pr
       activeDirectoryAuth: 'Disabled'
       passwordAuth: 'Enabled'
     }
-  }
-}
-
-resource postgresAzureServicesFirewallRule 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2026-01-01-preview' = {
-  parent: postgresServer
-  name: 'AllowAllAzureServicesAndResourcesWithinAzureIps'
-  properties: {
-    startIpAddress: '0.0.0.0'
-    endIpAddress: '0.0.0.0'
   }
 }
 
@@ -145,7 +166,7 @@ resource postgresDb 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2026-01
 }
 
 // Key Vault secrets provisioned by this deployment
-// These four are derived from resources above and are populated automatically.
+// These are derived from resources above and are populated automatically.
 // The remaining secrets (listed at the bottom) must be added manually.
 
 resource kvSecretStorageConnString 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
@@ -217,6 +238,98 @@ resource kvSecretAdminSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
 //   docusign-private-key          (RSA key — store as single line, use \n for newlines)
 //   docusign-nda-template-id
 //   docusign-hmac-secret
+
+// Private Endpoints
+
+resource peStorageBlob 'Microsoft.Network/privateEndpoints@2023-11-01' = {
+  name: 'PE-${storageAccountName}-BLOB'
+  location: location
+  properties: {
+    subnet: { id: storageSubnet.id }
+    privateLinkServiceConnections: [
+      {
+        name: 'PE-${storageAccountName}-BLOB'
+        properties: {
+          privateLinkServiceId: storageAccount.id
+          groupIds: ['blob']
+        }
+      }
+    ]
+  }
+}
+
+// resource peStorageBlobDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-11-01' = {
+//   parent: peStorageBlob
+//   name: 'default'
+//   properties: {
+//     privateDnsZoneConfigs: [
+//       {
+//         name: 'blob'
+//         properties: { privateDnsZoneId: blobDnsZoneId }
+//       }
+//     ]
+//   }
+// }
+
+resource pePostgres 'Microsoft.Network/privateEndpoints@2023-11-01' = {
+  name: 'PE-${dbServerName}-SQL'
+  location: location
+  properties: {
+    subnet: { id: sqlSubnet.id }
+    privateLinkServiceConnections: [
+      {
+        name: 'PE-${dbServerName}-SQL'
+        properties: {
+          privateLinkServiceId: postgresServer.id
+          groupIds: ['postgresqlServer']
+        }
+      }
+    ]
+  }
+}
+
+// resource pePostgresDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-11-01' = {
+//   parent: pePostgres
+//   name: 'default'
+//   properties: {
+//     privateDnsZoneConfigs: [
+//       {
+//         name: 'postgres'
+//         properties: { privateDnsZoneId: postgresDnsZoneId }
+//       }
+//     ]
+//   }
+// }
+
+resource peKeyVault 'Microsoft.Network/privateEndpoints@2023-11-01' = {
+  name: 'PE-${keyVaultName}'
+  location: location
+  properties: {
+    subnet: { id: storageSubnet.id }
+    privateLinkServiceConnections: [
+      {
+        name: 'PE-${keyVaultName}'
+        properties: {
+          privateLinkServiceId: keyVault.id
+          groupIds: ['vault']
+        }
+      }
+    ]
+  }
+}
+
+// resource peKeyVaultDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-11-01' = {
+//   parent: peKeyVault
+//   name: 'default'
+//   properties: {
+//     privateDnsZoneConfigs: [
+//       {
+//         name: 'vault'
+//         properties: { privateDnsZoneId: kvDnsZoneId }
+//       }
+//     ]
+//   }
+// }
 
 output keyVaultUri string = keyVault.properties.vaultUri
 output dbServerFqdn string = postgresServer.properties.fullyQualifiedDomainName

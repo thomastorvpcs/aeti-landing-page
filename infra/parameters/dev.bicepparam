@@ -5,13 +5,13 @@ param keyVaultName = 'abti-kv-dev'
 param storageAccountName = 'abtiresellerdatadev'
 param serviceBusNamespaceName = 'abti-onboarding-pcs-dev'
 param dbServerName = 'abti-db-dev'
-param appServicePlanName = 'asp-abti-plan-dev'
+param appServicePlanName = 'ASP-PCS-ABTI-DEV'
 param apiAppName = 'abti-api-dev'
 param workerAppName = 'abti-worker-dev'
 param staticWebAppName = 'abti-frontend-dev'
 
 // Compute
-param appServicePlanSku = 'B2'
+param appServicePlanSku = 'P0v3'
 param staticWebAppSku = 'Free'
 
 // Database
@@ -19,8 +19,12 @@ param dbSkuName = 'Standard_B1ms'
 param dbSkuTier = 'Burstable'
 param geoRedundantBackup = false
 
-// Private networking off for dev — B2 plan does not support VNet Integration
-param enablePrivateNetworking = false
+// Networking
+param vnetResourceGroup = 'RG-PCS-IT-NETWORKING-DEV-EUS2'
+param vnetName = 'VNET-PCS-PLATFORM-DEV-EUS2'
+param storagePrivateEndpointSubnetName = 'snet-PrivateEndpoint-Storage'
+param appServicesSubnetName = 'snet-PrivateEndpoint-AppServices'
+param sqlPrivateEndpointSubnetName = 'snet-PrivateEndpoint-SQL'
 
 // Integrations
 param docusignBasePath = 'https://demo.docusign.net/restapi'

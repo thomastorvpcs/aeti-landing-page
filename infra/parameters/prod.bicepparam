@@ -18,6 +18,7 @@ param staticWebAppSku = 'Standard'
 param dbSkuName = 'Standard_D2s_v3'
 param dbSkuTier = 'GeneralPurpose'
 param geoRedundantBackup = true
+
 // Integrations
 param docusignBasePath = 'https://www.docusign.net/restapi'
 
