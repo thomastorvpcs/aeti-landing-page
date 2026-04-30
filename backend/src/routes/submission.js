@@ -214,20 +214,8 @@ router.post("/", upload.fields([{ name: "w9", maxCount: 1 }, { name: "bankLetter
 
     const dbReseller = result.rows[0];
 
-    // Enqueue async downstream work (DocuSign, NetSuite, SendGrid alerts)
-    await enqueue("RESELLER_SUBMITTED", {
-      resellerId: dbReseller.id,
-      legalCompanyName,
-      contactEmail,
-      contactFirstName,
-      contactLastName,
-      ein,
-      w9Key,
-      bankLetterKey,
-      ndaSignerFirstName: resolvedNdaFirstName.trim(),
-      ndaSignerLastName: resolvedNdaLastName.trim(),
-      ndaSignerEmail: resolvedNdaEmail.trim().toLowerCase(),
-    });
+    // Enqueue async downstream work — only pass resellerId, worker fetches PII from DB
+    await enqueue("RESELLER_SUBMITTED", { resellerId: dbReseller.id });
 
     // Respond 202 immediately — downstream processing is async
     return res.status(202).json({

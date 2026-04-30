@@ -72,14 +72,17 @@ async function withRetry(fn, label) {
  * - Update DB with NS vendor ID and DS envelope ID
  */
 async function handleResellerSubmitted(payload) {
-  const { resellerId, legalCompanyName, contactEmail, contactFirstName, contactLastName, ein,
-          ndaSignerFirstName, ndaSignerLastName, ndaSignerEmail, w9Key, bankLetterKey } = payload;
+  const { resellerId } = payload;
 
   // Fetch full reseller record from DB with sensitive fields decrypted
   const key = encryptionKey();
   const { rows } = await pool.query(selectResellerSql("$2", "WHERE id = $1"), [resellerId, key]);
   if (!rows.length) throw new Error(`Reseller ${resellerId} not found`);
   const reseller = rows[0];
+
+  const { legal_company_name: legalCompanyName, contact_email: contactEmail,
+          contact_first_name: contactFirstName, contact_last_name: contactLastName,
+          ein, w9_s3_key: w9Key, bank_letter_s3_key: bankLetterKey } = reseller;
 
   // 1. Generate and upload vendor setup form PDF to Azure Blob Storage
   const vendorFormPdf = await withRetry(
@@ -306,14 +309,8 @@ async function pollPendingAgreements() {
  * even when the Service Bus push subscription silently drops.
  */
 async function pollStuckSubmissions() {
-  const key = encryptionKey();
   const { rows } = await pool.query(
-    `SELECT id, legal_company_name, contact_email, contact_first_name, contact_last_name,
-            pgp_sym_decrypt(ein, $1)::text AS ein,
-            nda_signer_first_name, nda_signer_last_name, nda_signer_email
-     FROM resellers
-     WHERE status = 'Initiated' AND created_at < NOW() - INTERVAL '2 minutes'`,
-    [key]
+    `SELECT id FROM resellers WHERE status = 'Initiated' AND created_at < NOW() - INTERVAL '2 minutes'`
   );
 
   console.log(`[worker] pollStuckSubmissions: ${rows.length} stuck record(s)`);
@@ -322,17 +319,7 @@ async function pollStuckSubmissions() {
 
   for (const reseller of rows) {
     try {
-      await enqueue("RESELLER_SUBMITTED", {
-        resellerId: reseller.id,
-        legalCompanyName: reseller.legal_company_name,
-        contactEmail: reseller.contact_email,
-        contactFirstName: reseller.contact_first_name,
-        contactLastName: reseller.contact_last_name,
-        ein: reseller.ein,
-        ndaSignerFirstName: reseller.nda_signer_first_name,
-        ndaSignerLastName: reseller.nda_signer_last_name,
-        ndaSignerEmail: reseller.nda_signer_email,
-      });
+      await enqueue("RESELLER_SUBMITTED", { resellerId: reseller.id });
       console.log(`[worker] Re-enqueued RESELLER_SUBMITTED for stuck reseller=${reseller.id}`);
     } catch (err) {
       console.error(`[worker] Failed to re-enqueue reseller ${reseller.id}:`, err.message);
