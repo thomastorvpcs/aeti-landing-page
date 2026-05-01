@@ -43,7 +43,10 @@ async function apiClient() {
   const token = await getAccessToken();
   return axios.create({
     baseURL: `${API_BASE_URL}/api/rest/v6`,
-    headers: { Authorization: `Bearer ${token}` },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "x-api-user": "email:abti-support@pcsww.com",
+    },
   });
 }
 
