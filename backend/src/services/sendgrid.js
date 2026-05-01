@@ -91,7 +91,7 @@ async function sendInternalAlert({
   note,
 }) {
   const msg = {
-    to: OPS_ALERT_EMAIL,
+    to: OPS_ALERT_EMAIL.split(",").map((e) => e.trim()),
     from: { email: FROM_EMAIL, name: FROM_NAME },
     customArgs: {
       reseller_id: resellerId,
