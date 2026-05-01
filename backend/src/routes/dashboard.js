@@ -298,6 +298,7 @@ router.post("/resellers/:id/retry-completion", dashboardActionRateLimiter, async
       contactFirstName: reseller.contact_first_name,
       contactLastName: reseller.contact_last_name,
       legalCompanyName: reseller.legal_company_name,
+      force: true,
     });
 
     await auditLog({

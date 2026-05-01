@@ -168,7 +168,7 @@ async function handleResellerSubmitted(payload) {
  * - Send welcome email with signed NDA + authorization letter
  */
 async function handleNdaCompleted(payload) {
-  const { resellerId, envelopeId } = payload;
+  const { resellerId, envelopeId, force } = payload;
 
   // Fetch reseller with sensitive fields decrypted
   const key = encryptionKey();
@@ -181,35 +181,45 @@ async function handleNdaCompleted(payload) {
   const contactLastName = reseller.contact_last_name;
   const legalCompanyName = reseller.legal_company_name;
 
-  // Idempotency guard — if the signed NDA is already uploaded a previous job
-  // completed successfully. Skip to avoid sending duplicate welcome emails.
-  if (reseller.signed_nda_s3_key) {
+  // Idempotency guard — skip if already processed, unless this is a forced resend from the dashboard.
+  if (reseller.signed_nda_s3_key && !force) {
     console.log(`[worker] NDA_COMPLETED already processed for reseller=${resellerId} — skipping duplicate job`);
     return;
   }
 
-  // 1. Download signed NDA from Acrobat Sign.
-  // Wait 20s first — Acrobat Sign needs time to finalise the combined document
-  // after the workflow-completed event before it's available for download.
-  console.log("[worker] Waiting 20s for Acrobat Sign to finalise combined document...");
-  await sleep(20000);
-  const signedNdaPdf = await withRetry(
-    () => downloadSignedNda(envelopeId),
-    "Acrobat Sign downloadSignedNda"
-  );
-
-  // 2. Archive to Azure Blob Storage
   const ndaKey = `resellers/${resellerId}/signed_nda.pdf`;
-  await withRetry(
-    () => uploadFile({ key: ndaKey, buffer: signedNdaPdf, contentType: "application/pdf" }),
-    "uploadFile(signedNda)"
-  );
+  let signedNdaPdf;
 
-  // 3. Update DB with NDA blob key and advance status to NDA Complete
-  await pool.query(
-    "UPDATE resellers SET signed_nda_s3_key = $1, status = 'NDA Complete', updated_at = NOW() WHERE id = $2",
-    [ndaKey, resellerId]
-  );
+  if (reseller.signed_nda_s3_key) {
+    // Forced resend — NDA already archived, just download it from blob storage
+    console.log(`[worker] Force resend — downloading signed NDA from blob storage for reseller=${resellerId}`);
+    signedNdaPdf = await withRetry(
+      () => downloadFile(reseller.signed_nda_s3_key),
+      "downloadFile(signedNda)"
+    );
+  } else {
+    // 1. Download signed NDA from Acrobat Sign.
+    // Wait 20s first — Acrobat Sign needs time to finalise the combined document
+    // after the workflow-completed event before it's available for download.
+    console.log("[worker] Waiting 20s for Acrobat Sign to finalise combined document...");
+    await sleep(20000);
+    signedNdaPdf = await withRetry(
+      () => downloadSignedNda(envelopeId),
+      "Acrobat Sign downloadSignedNda"
+    );
+
+    // 2. Archive to Azure Blob Storage
+    await withRetry(
+      () => uploadFile({ key: ndaKey, buffer: signedNdaPdf, contentType: "application/pdf" }),
+      "uploadFile(signedNda)"
+    );
+
+    // 3. Update DB with NDA blob key and advance status to NDA Complete
+    await pool.query(
+      "UPDATE resellers SET signed_nda_s3_key = $1, status = 'NDA Complete', updated_at = NOW() WHERE id = $2",
+      [ndaKey, resellerId]
+    );
+  }
 
   // 4. Generate authorization letter
   const programLetterPdf = await withRetry(
