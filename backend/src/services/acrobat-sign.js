@@ -2,13 +2,15 @@ const axios = require("axios");
 
 const CLIENT_ID = process.env.ACROBAT_CLIENT_ID;
 const CLIENT_SECRET = process.env.ACROBAT_CLIENT_SECRET;
-const API_BASE_URL = process.env.ACROBAT_API_BASE_URL || "https://api.na1.adobesign.com";
+// OAuth token endpoint shard — only used for token refresh, not API calls
+const OAUTH_BASE_URL = process.env.ACROBAT_API_BASE_URL || "https://api.na1.adobesign.com";
 const NDA_TEMPLATE_ID = process.env.ACROBAT_NDA_TEMPLATE_ID;
 const LEGAL_SIGNER_EMAIL = process.env.PCS_LEGAL_EMAIL;
 const LEGAL_SIGNER_NAME = process.env.PCS_LEGAL_NAME || "PCS Legal";
 
 let _cachedToken = null;
 let _tokenExpiry = 0;
+let _apiBaseUrl = null; // resolved via /baseUris after first token fetch
 
 /**
  * Get a valid access token, refreshing if expired.
@@ -20,7 +22,7 @@ async function getAccessToken() {
   if (!refreshToken) throw new Error("ACROBAT_REFRESH_TOKEN is not set");
 
   const response = await axios.post(
-    `${API_BASE_URL}/oauth/v2/refresh`,
+    `${OAUTH_BASE_URL}/oauth/v2/refresh`,
     new URLSearchParams({
       grant_type: "refresh_token",
       client_id: CLIENT_ID,
@@ -33,16 +35,35 @@ async function getAccessToken() {
   _cachedToken = response.data.access_token;
   // expires_in is in seconds; refresh 60s early
   _tokenExpiry = Date.now() + (response.data.expires_in - 60) * 1000;
+  // TEMPORARY — remove after inspecting scopes
+  console.log("[acrobat] TEMP access token:", _cachedToken);
+  // Invalidate cached base URL so we re-resolve on next apiClient() call
+  _apiBaseUrl = null;
   return _cachedToken;
 }
 
 /**
- * Return an axios instance with Authorization header set.
+ * Resolve the correct API access point for this account via /baseUris.
+ * Adobe Sign requires all API calls go to the account-specific shard.
+ */
+async function resolveApiBaseUrl(token) {
+  if (_apiBaseUrl) return _apiBaseUrl;
+  const res = await axios.get(`${OAUTH_BASE_URL}/api/rest/v6/baseUris`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  _apiBaseUrl = res.data.apiAccessPoint;
+  console.log("[acrobat] Resolved API access point:", _apiBaseUrl);
+  return _apiBaseUrl;
+}
+
+/**
+ * Return an axios instance with Authorization header set, pointed at the correct shard.
  */
 async function apiClient() {
   const token = await getAccessToken();
+  const baseUrl = await resolveApiBaseUrl(token);
   return axios.create({
-    baseURL: `${API_BASE_URL}/api/rest/v6`,
+    baseURL: `${baseUrl}api/rest/v6`,
     headers: { Authorization: `Bearer ${token}` },
   });
 }
