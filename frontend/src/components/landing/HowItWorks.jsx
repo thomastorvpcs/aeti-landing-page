@@ -78,10 +78,10 @@ export default function HowItWorks() {
           <p className="text-sm text-gray-500">
             Questions before you apply?{" "}
             <a
-              href="mailto:abtiquestions@pcsww.com"
+              href="mailto:abti-support@pcsww.com"
               className="text-brand-blue font-medium hover:underline"
             >
-              Email abtiquestions@pcsww.com
+              Email abti-support@pcsww.com
             </a>
           </p>
         </div>

@@ -39,10 +39,10 @@ export default function Footer() {
             </h3>
             <p className="text-sm mb-2">Partner inquiries:</p>
             <a
-              href="mailto:abtiquestions@pcsww.com"
+              href="mailto:abti-support@pcsww.com"
               className="text-brand-blue hover:text-blue-400 font-medium transition"
             >
-              abtiquestions@pcsww.com
+              abti-support@pcsww.com
             </a>
             <p className="text-xs text-blue-400 mt-6">
               &copy; {new Date().getFullYear()} PCS. All rights reserved.

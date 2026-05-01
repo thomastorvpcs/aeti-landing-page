@@ -349,11 +349,11 @@ ACROBAT_NDA_TEMPLATE_ID=
 
 # SendGrid
 SENDGRID_API_KEY=
-SENDGRID_FROM_EMAIL=abtiquestions@pcsww.com
+SENDGRID_FROM_EMAIL=abti-support@pcsww.com
 SENDGRID_FROM_NAME=PCS Partner Program
 SENDGRID_TEMPLATE_WELCOME=
 SENDGRID_TEMPLATE_INTERNAL_ALERT=
-SENDGRID_SUPPORT_EMAIL=abtiquestions@pcsww.com
+SENDGRID_SUPPORT_EMAIL=abti-support@pcsww.com
 
 # Internal routing
 PCS_OPS_EMAIL=ops@pcsww.com
