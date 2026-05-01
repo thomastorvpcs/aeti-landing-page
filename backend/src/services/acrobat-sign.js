@@ -118,6 +118,8 @@ async function sendNdaAgreement({
   };
 
   console.log("[acrobat] Creating agreement for:", legalCompanyName, contactEmail);
+  // TEMPORARY — remove after debugging
+  console.log("[acrobat] TEMP agreement payload:", JSON.stringify(payload, null, 2));
 
   const response = await client.post("/agreements", payload);
   return response.data.id;
