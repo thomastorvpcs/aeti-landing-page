@@ -7,8 +7,19 @@ const FROM_NAME = process.env.SENDGRID_FROM_NAME;
 const SUPPORT_EMAIL = process.env.SENDGRID_SUPPORT_EMAIL;
 const OPS_ALERT_EMAIL = process.env.PCS_OPS_EMAIL;
 
-const TEMPLATE_WELCOME = process.env.SENDGRID_TEMPLATE_WELCOME;
-const TEMPLATE_INTERNAL_ALERT = process.env.SENDGRID_TEMPLATE_INTERNAL_ALERT;
+const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const _rawTemplateWelcome = process.env.SENDGRID_TEMPLATE_WELCOME;
+const _rawTemplateAlert = process.env.SENDGRID_TEMPLATE_INTERNAL_ALERT;
+
+// Key Vault references that failed to resolve come through as the raw
+// "@Microsoft.KeyVault(...)" string — treat those as unset.
+const TEMPLATE_WELCOME = GUID_RE.test(_rawTemplateWelcome) ? _rawTemplateWelcome : null;
+const TEMPLATE_INTERNAL_ALERT = GUID_RE.test(_rawTemplateAlert) ? _rawTemplateAlert : null;
+
+if (_rawTemplateWelcome && !TEMPLATE_WELCOME)
+  console.warn("[sendgrid] SENDGRID_TEMPLATE_WELCOME is not a valid GUID (unresolved Key Vault ref?) — falling back to plain-text email");
+if (_rawTemplateAlert && !TEMPLATE_INTERNAL_ALERT)
+  console.warn("[sendgrid] SENDGRID_TEMPLATE_INTERNAL_ALERT is not a valid GUID (unresolved Key Vault ref?) — falling back to plain-text email");
 
 /**
  * Send the welcome email to the reseller after the NDA is countersigned.
