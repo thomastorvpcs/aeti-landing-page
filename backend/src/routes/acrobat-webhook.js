@@ -7,13 +7,16 @@ const { getAgreementStatus } = require("../services/acrobat-sign");
 const EXPECTED_CLIENT_ID = process.env.ACROBAT_CLIENT_ID;
 
 // Compute expected fingerprint once at startup — ACROBAT_WEBHOOK_CERT is the public cert
-// from webhook-client.crt, stored as a PEM string in the App Service environment variable.
-const certPem = (process.env.ACROBAT_WEBHOOK_CERT || "").replace(/\\n/g, "\n");
-const EXPECTED_FINGERPRINT = certPem
-  ? new crypto.X509Certificate(certPem).fingerprint256
-  : null;
-if (EXPECTED_FINGERPRINT) {
-  console.log("[acrobat-webhook] Client cert fingerprint loaded:", EXPECTED_FINGERPRINT);
+// stored as a base64-encoded DER string in the App Service environment variable.
+let EXPECTED_FINGERPRINT = null;
+const certB64 = process.env.ACROBAT_WEBHOOK_CERT;
+if (certB64) {
+  try {
+    EXPECTED_FINGERPRINT = new crypto.X509Certificate(Buffer.from(certB64, "base64")).fingerprint256;
+    console.log("[acrobat-webhook] Client cert fingerprint loaded:", EXPECTED_FINGERPRINT);
+  } catch (err) {
+    console.error("[acrobat-webhook] ACROBAT_WEBHOOK_CERT could not be parsed — client cert verification disabled:", err.message);
+  }
 }
 
 // Verify the client certificate Adobe presents on every webhook call (two-way SSL).
