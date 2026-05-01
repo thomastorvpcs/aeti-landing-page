@@ -9,17 +9,13 @@ const OPS_ALERT_EMAIL = process.env.PCS_OPS_EMAIL;
 
 const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const _rawTemplateWelcome = process.env.SENDGRID_TEMPLATE_WELCOME;
-const _rawTemplateAlert = process.env.SENDGRID_TEMPLATE_INTERNAL_ALERT;
 
 // Key Vault references that failed to resolve come through as the raw
 // "@Microsoft.KeyVault(...)" string — treat those as unset.
 const TEMPLATE_WELCOME = GUID_RE.test(_rawTemplateWelcome) ? _rawTemplateWelcome : null;
-const TEMPLATE_INTERNAL_ALERT = GUID_RE.test(_rawTemplateAlert) ? _rawTemplateAlert : null;
 
 if (_rawTemplateWelcome && !TEMPLATE_WELCOME)
   console.warn("[sendgrid] SENDGRID_TEMPLATE_WELCOME is not a valid GUID (unresolved Key Vault ref?) — falling back to plain-text email");
-if (_rawTemplateAlert && !TEMPLATE_INTERNAL_ALERT)
-  console.warn("[sendgrid] SENDGRID_TEMPLATE_INTERNAL_ALERT is not a valid GUID (unresolved Key Vault ref?) — falling back to plain-text email");
 
 /**
  * Send the welcome email to the reseller after the NDA is countersigned.
@@ -109,22 +105,10 @@ async function sendInternalAlert({
     },
   };
 
-  if (TEMPLATE_INTERNAL_ALERT && !note) {
-    msg.templateId = TEMPLATE_INTERNAL_ALERT;
-    msg.dynamicTemplateData = {
-      legalCompanyName,
-      contactEmail,
-      contactName: `${contactFirstName} ${contactLastName}`,
-      ein,
-      resellerId,
-      submittedAt: new Date().toISOString(),
-    };
-  } else {
-    msg.subject = note || `New AETI reseller submission: ${legalCompanyName}`;
-    msg.text = note
-      ? `${note}\n\nReseller ID: ${resellerId}\nCompany: ${legalCompanyName}\nTimestamp: ${new Date().toISOString()}`
-      : `A new reseller has submitted the onboarding form.\n\nCompany: ${legalCompanyName}\nContact: ${contactFirstName} ${contactLastName}\nEmail: ${contactEmail}\nEIN: ${ein}\nReseller ID: ${resellerId}\nSubmitted: ${new Date().toISOString()}`;
-  }
+  msg.subject = note || `New AETI reseller submission: ${legalCompanyName}`;
+  msg.text = note
+    ? `${note}\n\nReseller ID: ${resellerId}\nCompany: ${legalCompanyName}\nTimestamp: ${new Date().toISOString()}`
+    : `A new reseller has submitted the onboarding form.\n\nCompany: ${legalCompanyName}\nContact: ${contactFirstName} ${contactLastName}\nEmail: ${contactEmail}\nEIN: ${ein}\nReseller ID: ${resellerId}\nSubmitted: ${new Date().toISOString()}`;
 
   await sgMail.send(msg);
 }
