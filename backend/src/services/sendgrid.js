@@ -8,7 +8,6 @@ const SUPPORT_EMAIL = process.env.SENDGRID_SUPPORT_EMAIL;
 const OPS_ALERT_EMAIL = process.env.PCS_OPS_EMAIL;
 
 const TEMPLATE_WELCOME = process.env.SENDGRID_TEMPLATE_WELCOME;
-const TEMPLATE_INTERNAL_ALERT = process.env.SENDGRID_TEMPLATE_INTERNAL_ALERT;
 
 /**
  * Send the welcome email to the reseller after the NDA is countersigned.
@@ -98,22 +97,10 @@ async function sendInternalAlert({
     },
   };
 
-  if (TEMPLATE_INTERNAL_ALERT && !note) {
-    msg.templateId = TEMPLATE_INTERNAL_ALERT;
-    msg.dynamicTemplateData = {
-      legalCompanyName,
-      contactEmail,
-      contactName: `${contactFirstName} ${contactLastName}`,
-      ein,
-      resellerId,
-      submittedAt: new Date().toISOString(),
-    };
-  } else {
-    msg.subject = note || `New AETI reseller submission: ${legalCompanyName}`;
-    msg.text = note
-      ? `${note}\n\nReseller ID: ${resellerId}\nCompany: ${legalCompanyName}\nTimestamp: ${new Date().toISOString()}`
-      : `A new reseller has submitted the onboarding form.\n\nCompany: ${legalCompanyName}\nContact: ${contactFirstName} ${contactLastName}\nEmail: ${contactEmail}\nEIN: ${ein}\nReseller ID: ${resellerId}\nSubmitted: ${new Date().toISOString()}`;
-  }
+  msg.subject = note || `New AETI reseller submission: ${legalCompanyName}`;
+  msg.text = note
+    ? `${note}\n\nReseller ID: ${resellerId}\nCompany: ${legalCompanyName}\nTimestamp: ${new Date().toISOString()}`
+    : `A new reseller has submitted the onboarding form.\n\nCompany: ${legalCompanyName}\nContact: ${contactFirstName} ${contactLastName}\nEmail: ${contactEmail}\nEIN: ${ein}\nReseller ID: ${resellerId}\nSubmitted: ${new Date().toISOString()}`;
 
   await sgMail.send(msg);
 }
