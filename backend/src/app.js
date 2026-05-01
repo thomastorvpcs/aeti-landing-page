@@ -13,8 +13,17 @@ app.set("trust proxy", 1);
 
 // Frontend is served by Azure Static Web Apps — no static file serving here
 
-// Security headers (CSP disabled — Vite assets are self-hosted)
-app.use(helmet({ contentSecurityPolicy: false }));
+// Security headers — strict CSP for API responses; frontend CSP is enforced by Azure Static Web Apps
+app.use(helmet({
+  contentSecurityPolicy: {
+    useDefaults: false,
+    directives: {
+      defaultSrc:     ["'none'"],
+      frameAncestors: ["'none'"],
+      formAction:     ["'none'"],
+    },
+  },
+}));
 
 // Webhook route is exempt from CORS — it's a server-to-server call from Adobe
 app.use(express.json({ limit: "1mb" }));

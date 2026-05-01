@@ -85,7 +85,6 @@ async function sendInternalAlert({
   contactEmail,
   contactFirstName,
   contactLastName,
-  ein,
   resellerId,
   note,
 }) {
@@ -100,7 +99,7 @@ async function sendInternalAlert({
   msg.subject = note || `New AETI reseller submission: ${legalCompanyName}`;
   msg.text = note
     ? `${note}\n\nReseller ID: ${resellerId}\nCompany: ${legalCompanyName}\nTimestamp: ${new Date().toISOString()}`
-    : `A new reseller has submitted the onboarding form.\n\nCompany: ${legalCompanyName}\nContact: ${contactFirstName} ${contactLastName}\nEmail: ${contactEmail}\nEIN: ${ein}\nReseller ID: ${resellerId}\nSubmitted: ${new Date().toISOString()}`;
+    : `A new reseller has submitted the onboarding form.\n\nCompany: ${legalCompanyName}\nContact: ${contactFirstName} ${contactLastName}\nEmail: ${contactEmail}\nReseller ID: ${resellerId}\nSubmitted: ${new Date().toISOString()}`;
 
   await sgMail.send(msg);
 }

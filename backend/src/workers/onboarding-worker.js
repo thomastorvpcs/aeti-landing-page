@@ -152,7 +152,7 @@ async function handleResellerSubmitted(payload) {
 
   // 5. Send internal ops alert — prompts the team to review the submission in the dashboard
   await withRetry(
-    () => sendInternalAlert({ legalCompanyName, contactEmail, contactFirstName, contactLastName, ein, resellerId }),
+    () => sendInternalAlert({ legalCompanyName, contactEmail, contactFirstName, contactLastName, resellerId }),
     "SendGrid sendInternalAlert"
   );
 
