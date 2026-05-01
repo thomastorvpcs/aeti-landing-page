@@ -35,8 +35,6 @@ async function getAccessToken() {
   _cachedToken = response.data.access_token;
   // expires_in is in seconds; refresh 60s early
   _tokenExpiry = Date.now() + (response.data.expires_in - 60) * 1000;
-  // TEMPORARY — remove after inspecting scopes
-  console.log("[acrobat] TEMP access token:", _cachedToken);
   // Invalidate cached base URL so we re-resolve on next apiClient() call
   _apiBaseUrl = null;
   return _cachedToken;
