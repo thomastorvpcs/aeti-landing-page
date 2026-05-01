@@ -12,6 +12,8 @@ import { saveFile, loadFile, removeFile, clearFiles } from "../../utils/fileStor
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const EIN_REGEX = /^\d{2}-?\d{7}$/;
 
+const PHONE_DIGITS_REGEX = /^\d{10}$/;
+
 const INITIAL_FORM = {
   legalCompanyName: "",
   dba: "",
@@ -23,6 +25,7 @@ const INITIAL_FORM = {
   addressZip: "",
   addressCountry: "United States",
   website: "",
+  billingSameAsBusiness: true,
   billingAddressStreet: "",
   billingAddressCity: "",
   billingAddressState: "",
@@ -70,7 +73,11 @@ function validateStep(step, formData, w9File, bankLetterFile) {
   if (step === 2) {
     if (!formData.contactFirstName.trim()) errors.contactFirstName = "First name is required.";
     if (!formData.contactLastName.trim()) errors.contactLastName = "Last name is required.";
-    if (!formData.contactPhone.trim()) errors.contactPhone = "Phone number is required.";
+    if (!formData.contactPhone.trim()) {
+      errors.contactPhone = "Phone number is required.";
+    } else if (!PHONE_DIGITS_REGEX.test(formData.contactPhone.replace(/\D/g, ""))) {
+      errors.contactPhone = "Enter a valid 10-digit US phone number.";
+    }
     if (!formData.contactEmail.trim()) {
       errors.contactEmail = "Email is required.";
     } else if (!EMAIL_REGEX.test(formData.contactEmail)) {
@@ -79,7 +86,11 @@ function validateStep(step, formData, w9File, bankLetterFile) {
     if (!formData.ndaSignerSameAsContact) {
       if (!formData.ndaSignerFirstName.trim()) errors.ndaSignerFirstName = "First name is required.";
       if (!formData.ndaSignerLastName.trim()) errors.ndaSignerLastName = "Last name is required.";
-      if (!formData.ndaSignerPhone.trim()) errors.ndaSignerPhone = "Phone number is required.";
+      if (!formData.ndaSignerPhone.trim()) {
+        errors.ndaSignerPhone = "Phone number is required.";
+      } else if (!PHONE_DIGITS_REGEX.test(formData.ndaSignerPhone.replace(/\D/g, ""))) {
+        errors.ndaSignerPhone = "Enter a valid 10-digit US phone number.";
+      }
       if (!formData.ndaSignerEmail.trim()) {
         errors.ndaSignerEmail = "Email is required.";
       } else if (!EMAIL_REGEX.test(formData.ndaSignerEmail)) {
@@ -95,7 +106,11 @@ function validateStep(step, formData, w9File, bankLetterFile) {
     } else if (!EMAIL_REGEX.test(formData.financeContactEmail)) {
       errors.financeContactEmail = "Enter a valid email address.";
     }
-    if (!formData.financeContactPhone.trim()) errors.financeContactPhone = "Finance contact phone is required.";
+    if (!formData.financeContactPhone.trim()) {
+      errors.financeContactPhone = "Finance contact phone is required.";
+    } else if (!PHONE_DIGITS_REGEX.test(formData.financeContactPhone.replace(/\D/g, ""))) {
+      errors.financeContactPhone = "Enter a valid 10-digit US phone number.";
+    }
     if (!formData.bankName.trim()) errors.bankName = "Bank name is required.";
     if (!formData.bankAccountNumber.trim()) errors.bankAccountNumber = "Account number is required.";
     if (!formData.bankAba.trim()) errors.bankAba = "ABA routing number is required.";

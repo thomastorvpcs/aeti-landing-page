@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 
 const ENTITY_TYPES = [
   "LLC",
@@ -17,10 +17,10 @@ const US_STATES = [
 ];
 
 export default function Step1Company({ data, onChange, errors }) {
-  const [billingSame, setBillingSame] = useState(true);
+  const billingSame = data.billingSameAsBusiness !== false;
 
   const handleBillingSameChange = (checked) => {
-    setBillingSame(checked);
+    onChange("billingSameAsBusiness", checked);
     if (checked) {
       onChange("billingAddressStreet", "");
       onChange("billingAddressCity", "");
@@ -249,11 +249,19 @@ export default function Step1Company({ data, onChange, errors }) {
                 <label className="form-label" htmlFor="billingAddressState">
                   State
                 </label>
-                <input
-                  type="text"
-                  placeholder="NY"
-                  {...field("billingAddressState")}
-                />
+                <select
+                  id="billingAddressState"
+                  name="billingAddressState"
+                  value={data.billingAddressState || ""}
+                  onChange={(e) => onChange("billingAddressState", e.target.value)}
+                  className="form-input"
+                  autoComplete="billing address-level1"
+                >
+                  <option value="">State...</option>
+                  {US_STATES.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
               </div>
 
               <div>

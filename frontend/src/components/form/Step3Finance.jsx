@@ -1,5 +1,12 @@
 import React from "react";
 
+function formatPhone(raw) {
+  const digits = raw.replace(/\D/g, "").slice(0, 10);
+  if (digits.length < 4) return digits;
+  if (digits.length < 7) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
 export default function Step3Finance({ data, onChange, errors }) {
   const field = (name) => ({
     id: name,
@@ -9,6 +16,12 @@ export default function Step3Finance({ data, onChange, errors }) {
     className: `form-input ${errors[name] ? "form-input-error" : ""}`,
     "aria-invalid": !!errors[name],
     "aria-describedby": errors[name] ? `${name}-error` : undefined,
+  });
+
+  const phoneField = (name) => ({
+    ...field(name),
+    onChange: (e) => onChange(name, formatPhone(e.target.value)),
+    placeholder: "(555) 000-0000",
   });
 
   return (
@@ -74,9 +87,8 @@ export default function Step3Finance({ data, onChange, errors }) {
               </label>
               <input
                 type="tel"
-                placeholder="+1 (555) 000-0000"
                 autoComplete="tel"
-                {...field("financeContactPhone")}
+                {...phoneField("financeContactPhone")}
               />
               {errors.financeContactPhone && (
                 <p id="financeContactPhone-error" className="form-error">{errors.financeContactPhone}</p>

@@ -1,5 +1,12 @@
 import React from "react";
 
+function formatPhone(raw) {
+  const digits = raw.replace(/\D/g, "").slice(0, 10);
+  if (digits.length < 4) return digits;
+  if (digits.length < 7) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
 export default function Step2Contact({ data, onChange, errors }) {
   const field = (name) => ({
     id: name,
@@ -9,6 +16,12 @@ export default function Step2Contact({ data, onChange, errors }) {
     className: `form-input ${errors[name] ? "form-input-error" : ""}`,
     "aria-invalid": !!errors[name],
     "aria-describedby": errors[name] ? `${name}-error` : undefined,
+  });
+
+  const phoneField = (name) => ({
+    ...field(name),
+    onChange: (e) => onChange(name, formatPhone(e.target.value)),
+    placeholder: "(555) 000-0000",
   });
 
   const ndaSame = data.ndaSignerSameAsContact !== false;
@@ -58,7 +71,7 @@ export default function Step2Contact({ data, onChange, errors }) {
           <label className="form-label" htmlFor="contactPhone">
             Direct phone <span className="text-red-500">*</span>
           </label>
-          <input type="tel" placeholder="+1 (555) 000-0000" autoComplete="tel" {...field("contactPhone")} />
+          <input type="tel" autoComplete="tel" {...phoneField("contactPhone")} />
           {errors.contactPhone && (
             <p id="contactPhone-error" className="form-error">{errors.contactPhone}</p>
           )}
@@ -138,7 +151,7 @@ export default function Step2Contact({ data, onChange, errors }) {
               <label className="form-label" htmlFor="ndaSignerPhone">
                 Direct phone <span className="text-red-500">*</span>
               </label>
-              <input type="tel" placeholder="+1 (555) 000-0000" autoComplete="tel" {...field("ndaSignerPhone")} />
+              <input type="tel" autoComplete="tel" {...phoneField("ndaSignerPhone")} />
               {errors.ndaSignerPhone && (
                 <p id="ndaSignerPhone-error" className="form-error">{errors.ndaSignerPhone}</p>
               )}
