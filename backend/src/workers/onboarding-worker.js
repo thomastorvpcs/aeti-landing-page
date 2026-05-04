@@ -242,6 +242,19 @@ async function handleNdaCompleted(payload) {
     "SendGrid sendWelcomeEmail"
   );
 
+  // 6. Notify ops that onboarding is fully complete
+  await withRetry(
+    () => sendInternalAlert({
+      legalCompanyName,
+      contactEmail,
+      contactFirstName,
+      contactLastName,
+      resellerId,
+      note: `Reseller onboarding complete — NDA signed: ${legalCompanyName} (${contactFirstName} ${contactLastName}, ${contactEmail})`,
+    }),
+    "SendGrid sendInternalAlert(ndaComplete)"
+  );
+
   console.log(`[worker] NDA_COMPLETED processed: reseller=${resellerId}`);
 }
 
