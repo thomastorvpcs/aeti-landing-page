@@ -17,7 +17,7 @@ const globalRateLimiter = rateLimit({
 
 const submissionRateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5,
+  max: parseInt(process.env.SUBMISSION_RATE_LIMIT || "5", 10),
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator,
