@@ -31,17 +31,29 @@ app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 app.use("/acrobat/webhook", acrobatWebhookRouter);
 
 // CORS — only needed for API routes, not static assets
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || "").split(",").filter(Boolean);
+// Origins are compared case-insensitively with any trailing slash stripped, so a
+// stray "https://example.com/" in the env var still matches the browser's Origin.
+const normalizeOrigin = (o) => o.trim().toLowerCase().replace(/\/+$/, "");
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || "")
+  .split(",")
+  .map(normalizeOrigin)
+  .filter(Boolean);
 if (allowedOrigins.length === 0) {
   console.warn("[app] WARNING: ALLOWED_ORIGINS is not set — all CORS requests will be denied");
+} else {
+  console.log(`[app] CORS allowed origins: ${allowedOrigins.join(", ")}`);
 }
 app.use(
   cors({
     origin: (origin, cb) => {
       // Allow requests with no origin (same-origin, webhooks, health checks)
       if (!origin) return cb(null, true);
-      if (allowedOrigins.includes(origin)) return cb(null, true);
-      cb(new Error("Not allowed by CORS"));
+      if (allowedOrigins.includes(normalizeOrigin(origin))) return cb(null, true);
+      // Reject by omitting the CORS headers rather than throwing — the browser still
+      // blocks the response, but the request gets its normal status instead of a 500
+      // and the log names the origin that was refused.
+      console.warn(`[app] CORS rejected origin: ${origin} (allowed: ${allowedOrigins.join(", ") || "none"})`);
+      cb(null, false);
     },
     credentials: true,
   })
