@@ -9,18 +9,32 @@ const OPS_ALERT_EMAIL = process.env.PCS_OPS_EMAIL;
 
 // Azure Key Vault references that fail to resolve are passed through as the raw
 // "@Microsoft.KeyVault(...)" string, which is truthy but which SendGrid rejects as
-// an invalid GUID. Validate at module load and treat anything malformed as unset.
-const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// an invalid template id. Validate at module load and treat anything malformed as unset.
+//
+// Two id formats are legitimate:
+//   - dynamic templates: "d-" + 32 hex chars (what SendGrid issues today)
+//   - legacy templates:  a bare 8-4-4-4-12 GUID
+// Matching only the legacy form silently discards every modern dynamic template id.
+const TEMPLATE_ID_RE = /^(?:d-[0-9a-f]{32}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
 const _rawTemplateWelcome = process.env.SENDGRID_TEMPLATE_WELCOME;
 const _rawTemplateWelcomeManual = process.env.SENDGRID_TEMPLATE_WELCOME_MANUAL;
 
-const TEMPLATE_WELCOME = GUID_RE.test(_rawTemplateWelcome) ? _rawTemplateWelcome : null;
-const TEMPLATE_WELCOME_MANUAL = GUID_RE.test(_rawTemplateWelcomeManual) ? _rawTemplateWelcomeManual : null;
+const isTemplateId = (v) => TEMPLATE_ID_RE.test((v || "").trim());
+const TEMPLATE_WELCOME = isTemplateId(_rawTemplateWelcome) ? _rawTemplateWelcome.trim() : null;
+const TEMPLATE_WELCOME_MANUAL = isTemplateId(_rawTemplateWelcomeManual) ? _rawTemplateWelcomeManual.trim() : null;
+
+// Show enough of the rejected value to tell a Key Vault ref apart from a typo, without
+// dumping the whole thing into the log.
+const describeRejected = (v) => {
+  const s = String(v).trim();
+  if (s.startsWith("@Microsoft.KeyVault(")) return "unresolved Key Vault reference";
+  return `got "${s.slice(0, 12)}${s.length > 12 ? "…" : ""}" (${s.length} chars)`;
+};
 
 if (_rawTemplateWelcome && !TEMPLATE_WELCOME)
-  console.warn("[sendgrid] SENDGRID_TEMPLATE_WELCOME is not a valid GUID (unresolved Key Vault ref?) — falling back to plain-text email");
+  console.warn(`[sendgrid] SENDGRID_TEMPLATE_WELCOME is not a valid template id — ${describeRejected(_rawTemplateWelcome)} — falling back to plain-text email`);
 if (_rawTemplateWelcomeManual && !TEMPLATE_WELCOME_MANUAL)
-  console.warn("[sendgrid] SENDGRID_TEMPLATE_WELCOME_MANUAL is not a valid GUID (unresolved Key Vault ref?)");
+  console.warn(`[sendgrid] SENDGRID_TEMPLATE_WELCOME_MANUAL is not a valid template id — ${describeRejected(_rawTemplateWelcomeManual)}`);
 
 /**
  * Send the welcome email to the reseller once onboarding completes.
@@ -84,7 +98,7 @@ async function sendWelcomeEmail({
   // rather than sending the e-sign copy with no NDA attached.
   if (manual && !TEMPLATE_WELCOME_MANUAL && TEMPLATE_WELCOME) {
     throw new Error(
-      "SENDGRID_TEMPLATE_WELCOME_MANUAL is missing or not a valid GUID — refusing to send the manual welcome email with the e-sign template."
+      "SENDGRID_TEMPLATE_WELCOME_MANUAL is missing or not a valid template id — refusing to send the manual welcome email with the e-sign template."
     );
   }
 
