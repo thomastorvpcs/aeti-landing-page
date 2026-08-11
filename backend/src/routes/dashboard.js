@@ -19,6 +19,17 @@ router.param("id", (req, res, next, id) => {
   next();
 });
 
+// Manual-NDA actions clear the legal gate without producing a signed artifact, so the
+// operator's reason is the only evidence of why. Responds 400 and returns null if absent.
+function requireReason(req, res) {
+  const reason = (req.body?.reason || "").trim();
+  if (!reason) {
+    res.status(400).json({ error: "A reason is required." });
+    return null;
+  }
+  return reason.slice(0, 500);
+}
+
 async function auditLog({ action, resellerId, resellerName, performedBy, details }) {
   try {
     await pool.query(
@@ -197,6 +208,125 @@ router.post("/resellers/:id/send-nda", dashboardActionRateLimiter, async (req, r
   }
 });
 
+// Divert a reseller off the Acrobat Sign path — the NDA is handled outside the system.
+// No envelope is created, and the e-sign path is unreachable from "Manual NDA".
+router.post("/resellers/:id/manual-nda", dashboardActionRateLimiter, async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      "SELECT id, legal_company_name, status FROM resellers WHERE id = $1",
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: "Reseller not found" });
+
+    const { id, legal_company_name, status } = rows[0];
+
+    if (status !== "NDA Approval Pending") {
+      return res.status(400).json({
+        error: `Cannot switch to manual NDA — expected status "NDA Approval Pending", got "${status}".`,
+      });
+    }
+
+    const reason = requireReason(req, res);
+    if (reason === null) return;
+
+    await pool.query(
+      "UPDATE resellers SET status = 'Manual NDA', updated_at = NOW() WHERE id = $1",
+      [id]
+    );
+
+    await auditLog({
+      action: "NDA set to manual handling",
+      resellerId: id,
+      resellerName: legal_company_name,
+      performedBy: req.dashboardUser.email,
+      details: reason,
+    });
+
+    console.log(`[dashboard] NDA set to manual handling: reseller=${id} by=${req.dashboardUser.email}`);
+    res.json({ manual: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// The manually-handled NDA is settled — complete onboarding and send the program letter.
+router.post("/resellers/:id/approve-manual-nda", dashboardActionRateLimiter, async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      "SELECT id, status, contact_email, contact_first_name, contact_last_name, legal_company_name FROM resellers WHERE id = $1",
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: "Reseller not found" });
+
+    const reseller = rows[0];
+
+    if (reseller.status !== "Manual NDA") {
+      return res.status(400).json({
+        error: `Cannot approve manual NDA — expected status "Manual NDA", got "${reseller.status}".`,
+      });
+    }
+
+    const reason = requireReason(req, res);
+    if (reason === null) return;
+
+    await enqueue("MANUAL_NDA_COMPLETED", {
+      resellerId: reseller.id,
+      contactEmail: reseller.contact_email,
+      contactFirstName: reseller.contact_first_name,
+      contactLastName: reseller.contact_last_name,
+      legalCompanyName: reseller.legal_company_name,
+    });
+
+    await auditLog({
+      action: "Manual NDA approved",
+      resellerId: reseller.id,
+      resellerName: reseller.legal_company_name,
+      performedBy: req.dashboardUser.email,
+      details: reason,
+    });
+
+    console.log(`[dashboard] MANUAL_NDA_COMPLETED enqueued for reseller=${reseller.id} by=${req.dashboardUser.email}`);
+    res.json({ queued: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Escape hatch for a misclick — back to the gate, where either path is available again.
+// Deliberately unreachable from "Manual NDA Complete": completed onboarding is not undoable.
+router.post("/resellers/:id/revert-manual-nda", dashboardActionRateLimiter, async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      "SELECT id, legal_company_name, status FROM resellers WHERE id = $1",
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: "Reseller not found" });
+
+    const { id, legal_company_name, status } = rows[0];
+
+    if (status !== "Manual NDA") {
+      return res.status(400).json({ error: `Cannot revert — expected status "Manual NDA", got "${status}".` });
+    }
+
+    await pool.query(
+      "UPDATE resellers SET status = 'NDA Approval Pending', updated_at = NOW() WHERE id = $1",
+      [id]
+    );
+
+    await auditLog({
+      action: "Manual NDA reverted",
+      resellerId: id,
+      resellerName: legal_company_name,
+      performedBy: req.dashboardUser.email,
+    });
+
+    console.log(`[dashboard] Manual NDA reverted to approval pending: reseller=${id} by=${req.dashboardUser.email}`);
+    res.json({ reverted: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post("/resellers/:id/resend-nda", dashboardActionRateLimiter, async (req, res, next) => {
   try {
     const { rows } = await pool.query(
@@ -284,14 +414,17 @@ router.post("/resellers/:id/retry-completion", dashboardActionRateLimiter, async
     if (!rows.length) return res.status(404).json({ error: "Reseller not found" });
 
     const reseller = rows[0];
-    if (reseller.status !== "NDA Complete" && reseller.status !== "NDA Processing") {
-      return res.status(400).json({ error: `Cannot retry completion — status is "${reseller.status}", expected "NDA Complete" or "NDA Processing".` });
+    const isManual = reseller.status === "Manual NDA Complete";
+
+    if (!isManual && reseller.status !== "NDA Complete" && reseller.status !== "NDA Processing") {
+      return res.status(400).json({ error: `Cannot retry completion — status is "${reseller.status}", expected "NDA Complete", "NDA Processing" or "Manual NDA Complete".` });
     }
-    if (!reseller.docusign_envelope_id) {
+    // Manual records never have an agreement — only the e-sign path needs one.
+    if (!isManual && !reseller.docusign_envelope_id) {
       return res.status(400).json({ error: "No agreement ID on record for this reseller." });
     }
 
-    await enqueue("NDA_COMPLETED", {
+    await enqueue(isManual ? "MANUAL_NDA_COMPLETED" : "NDA_COMPLETED", {
       resellerId: reseller.id,
       envelopeId: reseller.docusign_envelope_id,
       contactEmail: reseller.contact_email,

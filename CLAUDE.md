@@ -70,8 +70,9 @@ All files are private (no public URLs). Access via short-lived SAS tokens.
 
 | Job | Trigger | Actions |
 |---|---|---|
-| `RESELLER_SUBMITTED` | Form submission | Create NetSuite vendor → upload vendor setup form PDF → create finance task → send NDA via Acrobat Sign → send internal alert |
+| `RESELLER_SUBMITTED` | Form submission | Create NetSuite vendor → upload vendor setup form PDF → create finance task → hold at `NDA Approval Pending` → send internal alert. The NDA is *not* sent here — a dashboard user approves and sends it |
 | `NDA_COMPLETED` | Acrobat Sign webhook or polling | Download signed NDA → archive to Azure Blob Storage → send welcome email with authorization letter |
+| `MANUAL_NDA_COMPLETED` | Dashboard "Approve manual NDA" | Generate authorization letter → status `Manual NDA Complete` → send welcome email with the program letter only (no signed NDA exists on this path) |
 
 Worker uses exponential backoff retry (max 5 attempts, 2s base). Messages are acknowledged after max retries to avoid infinite loops.
 
@@ -109,5 +110,5 @@ See `.env.example` for full list. Key groups:
 - `AZURE_STORAGE_*`, `AZURE_SERVICE_BUS_*` — Azure storage and queue
 - `NETSUITE_*` — account ID, OAuth 1.0a credentials, subsidiary/employee IDs
 - `ACROBAT_*` — client credentials, refresh token, NDA template ID
-- `SENDGRID_*` — API key, from address, template IDs
+- `SENDGRID_*` — API key, from address, template IDs. `SENDGRID_TEMPLATE_WELCOME_MANUAL` backs the manual NDA path and is required whenever `SENDGRID_TEMPLATE_WELCOME` is set; both are GUID-validated so an unresolved Key Vault reference is treated as unset rather than passed to SendGrid
 - `PCS_OPS_EMAIL`, `PCS_LEGAL_EMAIL` — internal routing

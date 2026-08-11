@@ -7,21 +7,35 @@ const FROM_NAME = process.env.SENDGRID_FROM_NAME;
 const SUPPORT_EMAIL = process.env.SENDGRID_SUPPORT_EMAIL;
 const OPS_ALERT_EMAIL = process.env.PCS_OPS_EMAIL;
 
-const TEMPLATE_WELCOME = process.env.SENDGRID_TEMPLATE_WELCOME;
+// Azure Key Vault references that fail to resolve are passed through as the raw
+// "@Microsoft.KeyVault(...)" string, which is truthy but which SendGrid rejects as
+// an invalid GUID. Validate at module load and treat anything malformed as unset.
+const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const _rawTemplateWelcome = process.env.SENDGRID_TEMPLATE_WELCOME;
+const _rawTemplateWelcomeManual = process.env.SENDGRID_TEMPLATE_WELCOME_MANUAL;
+
+const TEMPLATE_WELCOME = GUID_RE.test(_rawTemplateWelcome) ? _rawTemplateWelcome : null;
+const TEMPLATE_WELCOME_MANUAL = GUID_RE.test(_rawTemplateWelcomeManual) ? _rawTemplateWelcomeManual : null;
+
+if (_rawTemplateWelcome && !TEMPLATE_WELCOME)
+  console.warn("[sendgrid] SENDGRID_TEMPLATE_WELCOME is not a valid GUID (unresolved Key Vault ref?) — falling back to plain-text email");
+if (_rawTemplateWelcomeManual && !TEMPLATE_WELCOME_MANUAL)
+  console.warn("[sendgrid] SENDGRID_TEMPLATE_WELCOME_MANUAL is not a valid GUID (unresolved Key Vault ref?)");
 
 /**
- * Send the welcome email to the reseller after the NDA is countersigned.
- * Attaches the signed NDA PDF and the program letter.
+ * Send the welcome email to the reseller once onboarding completes.
+ * Attaches the signed NDA PDF (e-signed path only) and the program letter.
  *
  * @param {object} opts
  * @param {string} opts.to               - Reseller commercial contact email
  * @param {string} opts.firstName
  * @param {string} opts.lastName
  * @param {string} opts.legalCompanyName
- * @param {Buffer} opts.signedNdaPdf     - PDF buffer of the signed NDA
+ * @param {Buffer} [opts.signedNdaPdf]   - PDF buffer of the signed NDA; absent on the manual path
  * @param {Buffer} [opts.programLetterPdf] - PDF buffer of the program letter
- * @param {string} opts.envelopeId
+ * @param {string} [opts.envelopeId]     - Acrobat Sign agreement id; absent on the manual path
  * @param {string} opts.netsuiteVendorId
+ * @param {boolean} [opts.manual]        - NDA was handled outside Acrobat Sign
  */
 async function sendWelcomeEmail({
   to,
@@ -32,15 +46,18 @@ async function sendWelcomeEmail({
   programLetterPdf,
   envelopeId,
   netsuiteVendorId,
+  manual,
 }) {
-  const attachments = [
-    {
+  const attachments = [];
+
+  if (signedNdaPdf) {
+    attachments.push({
       content: signedNdaPdf.toString("base64"),
       filename: "ABTI_NDA_Signed.pdf",
       type: "application/pdf",
       disposition: "attachment",
-    },
-  ];
+    });
+  }
 
   if (programLetterPdf) {
     attachments.push({
@@ -56,13 +73,25 @@ async function sendWelcomeEmail({
     from: { email: FROM_EMAIL, name: FROM_NAME },
     attachments,
     customArgs: {
-      acrobat_envelope_id: envelopeId,
+      acrobat_envelope_id: envelopeId || "",
       netsuite_vendor_id: netsuiteVendorId || "",
     },
   };
 
-  if (TEMPLATE_WELCOME) {
-    msg.templateId = TEMPLATE_WELCOME;
+  // The manual path gets its own template — its copy must not thank the reseller for
+  // signing an NDA that never went through Acrobat Sign. If the environment is
+  // template-configured but the manual template is missing or malformed, fail loudly
+  // rather than sending the e-sign copy with no NDA attached.
+  if (manual && !TEMPLATE_WELCOME_MANUAL && TEMPLATE_WELCOME) {
+    throw new Error(
+      "SENDGRID_TEMPLATE_WELCOME_MANUAL is missing or not a valid GUID — refusing to send the manual welcome email with the e-sign template."
+    );
+  }
+
+  const templateId = manual ? TEMPLATE_WELCOME_MANUAL : TEMPLATE_WELCOME;
+
+  if (templateId) {
+    msg.templateId = templateId;
     msg.dynamicTemplateData = {
       firstName,
       lastName,
@@ -70,8 +99,11 @@ async function sendWelcomeEmail({
       supportEmail: SUPPORT_EMAIL,
     };
   } else {
+    const ndaLine = signedNdaPdf
+      ? "Thank you for signing the NDA. Your signed agreement is attached."
+      : "Thank you for completing your onboarding. Your reseller program letter is attached.";
     msg.subject = `Welcome to the AETI Reseller Program, ${firstName}!`;
-    msg.text = `Hi ${firstName},\n\nThank you for signing the NDA. Your signed agreement is attached.\n\nWelcome to the AETI Reseller Program!\n\nIf you have any questions, contact us at resellers@pcsww.com.\n\nBest regards,\nPCS Partner Program`;
+    msg.text = `Hi ${firstName},\n\n${ndaLine}\n\nWelcome to the AETI Reseller Program!\n\nIf you have any questions, contact us at ${SUPPORT_EMAIL}.\n\nBest regards,\nPCS Partner Program`;
   }
 
   await sgMail.send(msg);

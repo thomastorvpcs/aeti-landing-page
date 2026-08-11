@@ -61,16 +61,22 @@ CI/CD is handled via GitHub Actions. Pushes to the `staging` branch deploy to th
 ## Reseller status flow
 
 ```
-Initiated → NDA Approval Pending → NDA Pending → Awaiting Countersign → NDA Complete
-                    ↓
-                (delete)
+Initiated → NDA Approval Pending ─┬─ (Approve & Send NDA) → NDA Pending → Awaiting Countersign → NDA Processing → NDA Complete
+                    ↓             │
+                (delete)          └─ (Handle NDA manually) → Manual NDA ─┬─ (Approve manual NDA) → Manual NDA Complete
+                                                                        └─ (Revert) → NDA Approval Pending
 ```
 
 - **Initiated** — form submitted, worker not yet processed
 - **NDA Approval Pending** — worker processed; awaiting dashboard approval before sending envelope
 - **NDA Pending** — Acrobat Sign envelope sent to reseller for signing
 - **Awaiting Countersign** — reseller signed; awaiting PCS Legal countersignature
+- **NDA Processing** — fully signed; worker is archiving the signed NDA
 - **NDA Complete** — fully signed; welcome email with signed NDA and program letter sent
+- **Manual NDA** — NDA is being handled outside Acrobat Sign; no envelope exists. Revertible to approval pending
+- **Manual NDA Complete** — manual NDA settled; welcome email with program letter only sent (no signed NDA is archived)
+
+Either branch can end in **Cancelled** — via the dashboard's cancel action, or when Acrobat Sign reports the agreement cancelled or recalled.
 
 ---
 
@@ -183,6 +189,15 @@ Sends a reminder to the reseller (`NDA Pending`) or PCS Legal (`Awaiting Counter
 
 ### `POST /api/dashboard/resellers/:id/cancel-nda`
 Cancels the in-progress agreement and sets status to `Cancelled`.
+
+### `POST /api/dashboard/resellers/:id/manual-nda`
+Diverts the reseller to the manual NDA track — no Acrobat Sign envelope is created. Only valid when status is `NDA Approval Pending`. Requires a `reason` in the body, recorded in the audit log.
+
+### `POST /api/dashboard/resellers/:id/approve-manual-nda`
+Completes onboarding for a manually-handled NDA: enqueues `MANUAL_NDA_COMPLETED`, which sends the welcome email with the program letter only. Only valid when status is `Manual NDA`. Requires a `reason` in the body.
+
+### `POST /api/dashboard/resellers/:id/revert-manual-nda`
+Returns a `Manual NDA` record to `NDA Approval Pending` so either path can be chosen again. Not available once status is `Manual NDA Complete`.
 
 ### `DELETE /api/dashboard/resellers/:id`
 Deletes the reseller record and all associated blob files. Only allowed for `Cancelled`, `Initiated`, and `NDA Approval Pending` statuses.

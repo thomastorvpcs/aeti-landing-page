@@ -8,6 +8,8 @@ const STATUS_META = {
   "Awaiting Countersign":   { label: "Awaiting Countersign",   bg: "bg-blue-50",     text: "text-blue-700",    dot: "bg-blue-500" },
   "NDA Processing":         { label: "NDA Processing",         bg: "bg-teal-50",     text: "text-teal-700",    dot: "bg-teal-500" },
   "NDA Complete":           { label: "NDA Complete",           bg: "bg-green-50",    text: "text-green-700",   dot: "bg-green-500" },
+  "Manual NDA":             { label: "Manual NDA",             bg: "bg-indigo-50",   text: "text-indigo-700",  dot: "bg-indigo-500" },
+  "Manual NDA Complete":    { label: "Manual NDA Complete",    bg: "bg-emerald-50",  text: "text-emerald-700", dot: "bg-emerald-500" },
   "Cancelled":              { label: "Cancelled",              bg: "bg-red-50",      text: "text-red-600",     dot: "bg-red-400" },
 };
 
@@ -58,6 +60,12 @@ function DetailModal({ reseller, onClose, onDelete }) {
   const [approveResult, setApproveResult] = useState(null); // "ok" | "error"
   const [retrying, setRetrying] = useState(false);
   const [retryResult, setRetryResult] = useState(null); // "ok" | "error"
+  const [markingManual, setMarkingManual] = useState(false);
+  const [manualResult, setManualResult] = useState(null); // "ok" | "error"
+  const [approvingManual, setApprovingManual] = useState(false);
+  const [approveManualResult, setApproveManualResult] = useState(null); // "ok" | "error"
+  const [reverting, setReverting] = useState(false);
+  const [revertResult, setRevertResult] = useState(null); // "ok" | "error"
 
   useEffect(() => {
     // Reset all action state when switching to a different reseller
@@ -71,6 +79,12 @@ function DetailModal({ reseller, onClose, onDelete }) {
     setApproveResult(null);
     setRetrying(false);
     setRetryResult(null);
+    setMarkingManual(false);
+    setManualResult(null);
+    setApprovingManual(false);
+    setApproveManualResult(null);
+    setReverting(false);
+    setRevertResult(null);
 
     if (!reseller) return;
     setFiles(null);
@@ -138,7 +152,10 @@ function DetailModal({ reseller, onClose, onDelete }) {
   }
 
   async function handleRetryCompletion() {
-    if (!window.confirm("Resend the welcome email? This will re-download the signed NDA and resend the welcome email to the reseller.")) return;
+    const message = reseller.status === "Manual NDA Complete"
+      ? "Resend the welcome email? This will regenerate the program letter and resend the welcome email to the reseller."
+      : "Resend the welcome email? This will re-download the signed NDA and resend the welcome email to the reseller.";
+    if (!window.confirm(message)) return;
     setRetrying(true);
     setRetryResult(null);
     try {
@@ -170,6 +187,66 @@ function DetailModal({ reseller, onClose, onDelete }) {
       setApproveResult("error");
     } finally {
       setApproving(false);
+    }
+  }
+
+  async function handleMarkManual() {
+    const reason = window.prompt(
+      "Handle this NDA outside the system? No Acrobat Sign envelope will be created.\n\nReason:"
+    );
+    if (reason === null || !reason.trim()) return;
+    setMarkingManual(true);
+    setManualResult(null);
+    try {
+      await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL || ""}/api/dashboard/resellers/${reseller.id}/manual-nda`,
+        { reason: reason.trim() },
+        { headers: authHeaders() }
+      );
+      setManualResult("ok");
+    } catch {
+      setManualResult("error");
+    } finally {
+      setMarkingManual(false);
+    }
+  }
+
+  async function handleApproveManualNda() {
+    const reason = window.prompt(
+      `Approve the manual NDA for ${reseller.legal_company_name}? This sends the welcome email and program letter to ${reseller.contact_email}.\n\nNDA reference / reason:`
+    );
+    if (reason === null || !reason.trim()) return;
+    setApprovingManual(true);
+    setApproveManualResult(null);
+    try {
+      await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL || ""}/api/dashboard/resellers/${reseller.id}/approve-manual-nda`,
+        { reason: reason.trim() },
+        { headers: authHeaders() }
+      );
+      setApproveManualResult("ok");
+    } catch {
+      setApproveManualResult("error");
+    } finally {
+      setApprovingManual(false);
+    }
+  }
+
+  async function handleRevertManual() {
+    if (!window.confirm("Revert to approval pending? The NDA can then be sent electronically or handled manually again.")) return;
+    setReverting(true);
+    setRevertResult(null);
+    try {
+      await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL || ""}/api/dashboard/resellers/${reseller.id}/revert-manual-nda`,
+        {},
+        { headers: authHeaders() }
+      );
+      setRevertResult("ok");
+    } catch {
+      setRevertResult("error");
+    } finally {
+      setReverting(false);
     }
   }
 
@@ -238,8 +315,41 @@ function DetailModal({ reseller, onClose, onDelete }) {
                   {approving ? "Sending…" : "Approve & Send NDA"}
                 </button>
               )}
+              {reseller.status === "NDA Approval Pending" && (
+                <button
+                  onClick={handleMarkManual}
+                  disabled={markingManual || manualResult === "ok"}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-indigo-400 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors disabled:opacity-50"
+                >
+                  {markingManual ? "Saving…" : "Handle NDA manually"}
+                </button>
+              )}
               {approveResult === "ok" && <span className="text-xs text-green-600 font-medium">NDA sent to reseller</span>}
               {approveResult === "error" && <span className="text-xs text-red-500 font-medium">Failed — try again</span>}
+              {manualResult === "ok" && <span className="text-xs text-indigo-600 font-medium">Switched to manual handling</span>}
+              {manualResult === "error" && <span className="text-xs text-red-500 font-medium">Failed — try again</span>}
+              {reseller.status === "Manual NDA" && (
+                <button
+                  onClick={handleApproveManualNda}
+                  disabled={approvingManual || approveManualResult === "ok"}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50"
+                >
+                  {approvingManual ? "Queuing…" : "Approve manual NDA"}
+                </button>
+              )}
+              {reseller.status === "Manual NDA" && (
+                <button
+                  onClick={handleRevertManual}
+                  disabled={reverting || revertResult === "ok"}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-gray-300 px-3 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  {reverting ? "Reverting…" : "Revert to approval pending"}
+                </button>
+              )}
+              {approveManualResult === "ok" && <span className="text-xs text-green-600 font-medium">Queued — welcome email will arrive shortly</span>}
+              {approveManualResult === "error" && <span className="text-xs text-red-500 font-medium">Failed — try again</span>}
+              {revertResult === "ok" && <span className="text-xs text-gray-600 font-medium">Reverted to approval pending</span>}
+              {revertResult === "error" && <span className="text-xs text-red-500 font-medium">Revert failed — try again</span>}
               {canResend && (
                 <button
                   onClick={handleResend}
@@ -262,7 +372,7 @@ function DetailModal({ reseller, onClose, onDelete }) {
               {resendResult === "error" && <span className="text-xs text-red-500 font-medium">Failed — try again</span>}
               {cancelResult === "ok" && <span className="text-xs text-red-600 font-medium">Agreement cancelled</span>}
               {cancelResult === "error" && <span className="text-xs text-red-500 font-medium">Cancel failed — try again</span>}
-              {(reseller.status === "NDA Processing" || reseller.status === "NDA Complete") && (
+              {(reseller.status === "NDA Processing" || reseller.status === "NDA Complete" || reseller.status === "Manual NDA Complete") && (
                 <button
                   onClick={handleRetryCompletion}
                   disabled={retrying || retryResult === "ok"}
@@ -666,6 +776,8 @@ export default function Dashboard() {
     awaitingCountersign: resellers.filter((r) => r.status === "Awaiting Countersign").length,
     ndaProcessing: resellers.filter((r) => r.status === "NDA Processing").length,
     ndaComplete: resellers.filter((r) => r.status === "NDA Complete").length,
+    manualNda: resellers.filter((r) => r.status === "Manual NDA").length,
+    manualNdaComplete: resellers.filter((r) => r.status === "Manual NDA Complete").length,
     cancelled: resellers.filter((r) => r.status === "Cancelled").length,
   };
 
@@ -762,7 +874,7 @@ export default function Dashboard() {
         {activeTab === "resellers" && <>
 
         {/* Stat cards — click to filter */}
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-7 mb-6">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 mb-6">
           {[
             { label: "Total", filter: "All", value: counts.total, color: "text-brand-navy", ring: "ring-brand-navy" },
             { label: "Approval Pending", filter: "NDA Approval Pending", value: counts.approvalPending, color: "text-violet-600", ring: "ring-violet-400" },
@@ -770,6 +882,8 @@ export default function Dashboard() {
             { label: "Awaiting Countersign", filter: "Awaiting Countersign", value: counts.awaitingCountersign, color: "text-blue-600", ring: "ring-blue-400" },
             { label: "NDA Processing", filter: "NDA Processing", value: counts.ndaProcessing, color: "text-teal-600", ring: "ring-teal-400" },
             { label: "NDA Complete", filter: "NDA Complete", value: counts.ndaComplete, color: "text-green-600", ring: "ring-green-400" },
+            { label: "Manual NDA", filter: "Manual NDA", value: counts.manualNda, color: "text-indigo-600", ring: "ring-indigo-400" },
+            { label: "Manual NDA Complete", filter: "Manual NDA Complete", value: counts.manualNdaComplete, color: "text-emerald-600", ring: "ring-emerald-400" },
             { label: "Cancelled", filter: "Cancelled", value: counts.cancelled, color: "text-red-500", ring: "ring-red-400" },
           ].map(({ label, filter, value, color, ring }) => {
             const active = statusFilter === filter;

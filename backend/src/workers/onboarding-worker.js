@@ -258,6 +258,75 @@ async function handleNdaCompleted(payload) {
   console.log(`[worker] NDA_COMPLETED processed: reseller=${resellerId}`);
 }
 
+/**
+ * MANUAL_NDA_COMPLETED
+ * Triggered from the dashboard when an NDA handled outside Acrobat Sign is settled.
+ * - Generate authorization letter
+ * - Update status to "Manual NDA Complete"
+ * - Send welcome email with the program letter only (there is no signed NDA to attach)
+ */
+async function handleManualNdaCompleted(payload) {
+  const { resellerId, force } = payload;
+
+  // Fetch reseller with sensitive fields decrypted
+  const key = encryptionKey();
+  const { rows } = await pool.query(selectResellerSql("$2", "WHERE id = $1"), [resellerId, key]);
+  if (!rows.length) throw new Error(`Reseller ${resellerId} not found`);
+  const reseller = rows[0];
+
+  const contactEmail = reseller.contact_email;
+  const contactFirstName = reseller.contact_first_name;
+  const contactLastName = reseller.contact_last_name;
+  const legalCompanyName = reseller.legal_company_name;
+
+  // Idempotency guard — skip if already processed, unless this is a forced resend from the dashboard.
+  if (reseller.status === "Manual NDA Complete" && !force) {
+    console.log(`[worker] MANUAL_NDA_COMPLETED already processed for reseller=${resellerId} — skipping duplicate job`);
+    return;
+  }
+
+  // 1. Generate authorization letter
+  const programLetterPdf = await withRetry(
+    () => generateAuthorizationLetter({ legalCompanyName }),
+    "generateAuthorizationLetter"
+  );
+
+  // 2. Advance status to Manual NDA Complete
+  await pool.query(
+    "UPDATE resellers SET status = 'Manual NDA Complete', updated_at = NOW() WHERE id = $1",
+    [resellerId]
+  );
+
+  // 3. Send welcome email — program letter only, no signed NDA exists for this path
+  await withRetry(
+    () => sendWelcomeEmail({
+      to: contactEmail,
+      firstName: contactFirstName,
+      lastName: contactLastName,
+      legalCompanyName,
+      programLetterPdf,
+      netsuiteVendorId: reseller.netsuite_vendor_id,
+      manual: true,
+    }),
+    "SendGrid sendWelcomeEmail(manual)"
+  );
+
+  // 4. Notify ops that onboarding is fully complete
+  await withRetry(
+    () => sendInternalAlert({
+      legalCompanyName,
+      contactEmail,
+      contactFirstName,
+      contactLastName,
+      resellerId,
+      note: `Reseller onboarding complete — NDA handled manually: ${legalCompanyName} (${contactFirstName} ${contactLastName}, ${contactEmail})`,
+    }),
+    "SendGrid sendInternalAlert(manualNdaComplete)"
+  );
+
+  console.log(`[worker] MANUAL_NDA_COMPLETED processed: reseller=${resellerId}`);
+}
+
 // ─── Agreement status polling ───────────────────────────────────────────────────
 
 /**
@@ -389,6 +458,9 @@ async function run() {
           case "NDA_COMPLETED":
             await handleNdaCompleted(payload);
             break;
+          case "MANUAL_NDA_COMPLETED":
+            await handleManualNdaCompleted(payload);
+            break;
           default:
             console.warn(`[worker] Unknown job type: ${type}`);
         }
@@ -396,12 +468,12 @@ async function run() {
         console.log("[worker] Job completed and acknowledged.");
       } catch (err) {
         console.error(`[worker] Job ${type} failed:`, err.message);
-        if (type === "NDA_COMPLETED") {
+        if (type === "NDA_COMPLETED" || type === "MANUAL_NDA_COMPLETED") {
           // Alert ops so the welcome email can be manually re-triggered from the dashboard
           sendInternalAlert({
             legalCompanyName: payload.legalCompanyName || "Unknown",
             resellerId: payload.resellerId,
-            note: `NDA_COMPLETED job failed for reseller ${payload.resellerId} (${payload.legalCompanyName}) — welcome email was NOT sent. Use the dashboard to re-trigger. Error: ${err.message}`,
+            note: `${type} job failed for reseller ${payload.resellerId} (${payload.legalCompanyName}) — welcome email was NOT sent. Use the dashboard to re-trigger. Error: ${err.message}`,
           }).catch((alertErr) => {
             console.error("[worker] Failed to send internal alert:", alertErr.message);
           });
